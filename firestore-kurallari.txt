@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.email == "hguclu0206@gmail.com"; }
+    function member() { return get(/databases/$(database)/documents/members/$(request.auth.uid)).data; }
+    function isActive() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/members/$(request.auth.uid))
+        && member().status == "active"
+        && (member().until == null || member().until > request.time);
+    }
+
+    // Yönetici her şeyi okur ve yazar
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Herkesin okuduğu, yalnız yöneticinin yazdığı ortak veriler (aktif üyeler okur)
+    match /programs/{id} { allow read: if isActive(); }
+    match /results/{id}  { allow read: if isActive(); }
+    match /canli/{id}    { allow read: if isActive(); }
+    match /toto/{id}     { allow read: if isActive(); }
+    match /lotto/{id}    { allow read: if isActive(); }
+    match /settings/{id} { allow read: if isActive() && id in ["aliases", "sales"]; }
+
+    // Tanıtım sayfası bilgileri (fiyatlar, iletişim): herkes okur
+    match /public/{id} { allow read: if true; }
+
+    // Üye numarası → e-posta (girişte üye numarası kullanılabilsin diye)
+    match /uyeno/{no} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // Üye kaydı
+    match /members/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.until == null;
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["lastLogin", "verified", "ad", "tel"]);
+    }
+
+    // Her üyenin kendi kuponları, ayarları ve Spor Toto kayıtları
+    match /users/{uid}/{document=**} {
+      allow read, write: if signedIn() && request.auth.uid == uid && isActive();
+    }
+  }
+}
