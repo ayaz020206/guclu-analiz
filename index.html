@@ -4126,7 +4126,7 @@ function parseIddaaPages(pages,pool){
         const f=s=>{const m=SC.exec(s);return (+m[1])+"-"+(+m[2])};
         stat.done++; out.push(Object.assign(base,{ms:f(msI.s),iy:iyI?f(iyI.s):""}));
       } else if(ERT.test(st)){ stat.ert++; out.push(Object.assign(base,{iy:"",ms:"",ert:true})) }
-      else if(EX.test(st)){ stat.ex++; const m=scs.length?scs[scs.length-1].s.replace(/\s/g,""):""; out.push(Object.assign(base,{iy:"",ms:m,ex:st})) }
+      else if(EX.test(st)){ stat.ex++; const f=s=>{const m=SC.exec(s);return (+m[1])+"-"+(+m[2])}; const m=scs.length?f(scs[scs.length-1].s):"", iy=scs.length>1?f(scs[0].s):""; out.push(Object.assign(base,{iy,ms:m,ex:st})) }
       else if(TM.test(st)){ stat.notyet++; out.push(Object.assign(base,{pre:true})) }
       else { stat.live++; out.push(Object.assign(base,{live:true})) }
     }
@@ -4160,12 +4160,29 @@ async function readMackolikPdf(buf){
   for(const r of other) if(r.ert&&!best.some(b=>b.ert&&b.saat===r.saat&&b.tarih===r.tarih&&(b.dep===r.dep||b.blob))) best.push(r);
   return best;
 }
+// v125: uzatma / penaltıya giden maçta 90 dakika skoru çıkarımı.
+// Uzatmaya giden tek maçlık eşleşmede 90. dakika berabere biter (k-k). PDF'teki skor uzatma dahil son skordur (penaltı atışları hariç).
+// k ≥ ilk yarıda takımların attığı en büyük gol sayısı ve k ≤ son skordaki küçük gol sayısı. Alt ve üst sınır eşitse 90 dk skoru kesindir.
+// Uzatması olmayan kupalarda (İngiltere Lig Kupası / EFL Trophy: 90 dakikadan sonra doğrudan penaltı) PEN satırındaki skor zaten 90 dk skorudur.
+// İki maçlı eşleşmelerde (Avrupa kupaları, eleme / play-off rövanşları) 90. dakika berabere olmak zorunda değildir: orada çıkarım yapılmaz.
+const EX_NOET=/(EFL|Futbol Ligi Kupas|Lig Kupas|League Cup|Carabao|EFL Trophy|Papa John)/i, EX_2LEG=/(UEFA|Şampiyonlar|Avrupa Ligi|Konferans|Libertadores|Sudamericana|CONCACAF|AFC|CAF|Play.?Off|Eleme|Rövanş|Copa do Brasil|Brezilya Kupas)/i;
+function ex90(r){ const sc=s=>{ const m=/^(\d{1,2})-(\d{1,2})$/.exec(String(s||"").replace(/\s/g,"")); return m?[+m[1],+m[2]]:null };
+  const F=sc(r.ms), I=sc(r.iy), pen=/^(Pen|PEN|PS|Penalt)/i.test(r.ex||""), lig=r.lig||"";
+  if(!F) return {ok:false,why:"son skor okunamadı"};
+  if(EX_2LEG.test(lig)) return {ok:false,why:"iki maçlı eşleşme olabilir; 90. dakika berabere olmak zorunda değil"};
+  if(pen&&EX_NOET.test(lig)&&F[0]===F[1]) return {ok:true,ms:F[0]+"-"+F[1],why:"bu kupada uzatma yok; penaltıdan önceki skor 90 dk skorudur"};
+  const lo=I?Math.max(I[0],I[1]):0, hi=Math.min(F[0],F[1]);
+  if(pen&&F[0]!==F[1]) return {ok:false,why:"penaltıya giden maçta son skor berabere değil (iki maçlı eşleşme olabilir)"};
+  if(lo>hi) return {ok:false,why:"İY ve son skor birbirini tutmuyor"};
+  if(lo===hi) return {ok:true,ms:lo+"-"+lo,why:`90. dakika berabere bitti; İY ${r.iy||"0-0"} ve son skor ${r.ms} ile tek olası skor ${lo}-${lo}`};
+  const c=[]; for(let k=lo;k<=hi;k++) c.push(k+"-"+k); return {ok:false,why:"90 dk skoru kesin değil, olasılar: "+c.join(" ya da ")} }
 function showMackolik(rows){
   const box=$("pasteout");
   const isI=rows.length>0&&rows.every(r=>r.src==="iddaa"), SRCN=isI?"iddaa":"Mackolik";
-  const exRows=rows.filter(r=>r.ex); rows=rows.filter(r=>!r.ex);
+  const exOk=[]; for(const r of rows) if(r.ex&&!r.ert){ const z=ex90(r); r.x90=z; if(z.ok){ exOk.push(Object.assign({},r,{ms:z.ms,msF:r.ms,ex:null,exK:r.ex,exWhy:z.why})) } }
+  const exRows=rows.filter(r=>r.ex&&!(r.x90&&r.x90.ok)); rows=rows.filter(r=>!r.ex).concat(exOk);
   const exM=exRows.length?matchMackolik(exRows,matches):[];
-  const exNote=()=>{ if(!exRows.length) return; box.insertAdjacentHTML("afterbegin",`<div class="card" style="margin-bottom:10px;border-color:var(--warn)"><h2>Uzatma / penaltıya giden ${exRows.length} maç — skor kaydedilmedi</h2><p class="note" style="margin:0 0 6px">PDF'teki skor 90 dakika skoru değil (uzatma ya da penaltı dahil). Sistem yalnız 90 dakika skoru kullandığı için bunlar kaydedilmedi. 90 dakika skorunu biliyorsan aşağıdaki "bulunamayan maçlar" listesinden elle girebilirsin.</p>${exRows.map(r=>{ const mm=exM.find(x=>x.r===r); return `<div class="mk"><span><b>${esc(mm?mm.m.ev+" – "+mm.m.dep:r.ev+" – "+r.dep)}</b><br><small class="note">${esc(r.saat)} · PDF: ${esc(r.ms)} (${esc(r.ex)})${r.iy?" · İY "+esc(r.iy):""}${mm?"":" · bültende yok"}</small></span></div>` }).join("")}</div>`) };
+  const exNote=()=>{ if(!exRows.length) return; box.insertAdjacentHTML("afterbegin",`<div class="card" style="margin-bottom:10px;border-color:var(--warn)"><h2>Uzatma / penaltıya giden ${exRows.length} maç — skor kaydedilmedi</h2><p class="note" style="margin:0 0 6px">PDF'teki skor uzatma dahil son skor; bu maçlarda 90 dakika skoru kesin çıkarılamadı (nedeni satırda yazıyor). 90 dakika skorunu biliyorsan aşağıdaki "bulunamayan maçlar" listesinden elle girebilirsin.${exOk.length?` <b>${exOk.length} maçın</b> 90 dk skoru kesin çıkarıldı ve aşağıdaki listeye eklendi.`:""}</p>${exRows.map(r=>{ const mm=exM.find(x=>x.r===r); return `<div class="mk"><span><b>${esc(mm?mm.m.ev+" – "+mm.m.dep:r.ev+" – "+r.dep)}</b><br><small class="note">${esc(r.saat)} · PDF: ${esc(r.ms)} (${esc(r.ex)})${r.iy?" · İY "+esc(r.iy):""}${mm?"":" · bültende yok"}${r.x90?" · "+esc(r.x90.why):""}</small></span></div>` }).join("")}</div>`) };
   // Mackolik'te "v" = henüz oynanmamış maç da olabilir: maç saati üzerinden 3 saat geçmediyse ertelendi SAYMA
   const koT=m=>new Date(m.tarih+"T"+m.saat+":00").getTime(), notYet=m=>koT(m)+180*60000>Date.now();
   const sw=v=>v?v.split("-").reverse().join("-"):v;
@@ -4187,7 +4204,7 @@ function showMackolik(rows){
   box.innerHTML=`<div class="row" style="align-items:center;margin-bottom:8px"><span class="note" style="flex:1 1 auto">Listeyi kontrol et, sonra kaydet.</span><button class="tbtn primary" id="mksave0" style="flex:0 0 auto">Skorları kaydet</button></div><div class="msg"><b style="color:var(--good)">${res.length-amb} maç eşleşti</b> (işaretli)${nErt?`, bunların ${nErt} tanesi <b>ertelendi</b> olarak kaydedilip listeden çıkarılacak`:""}${amb?` · <b style="color:var(--warn)">${amb} maç kontrol gerektiriyor</b> (en üstte, işaretsiz: doğruysa işaretle)`:""} · ${SRCN}'da ${rows.length} biten maç vardı, bültende olmayanlar atlandı.${missing.length?` Bültende olup listede bulunamayan ${missing.length} maç var (aşağıda).`:""}${isI&&missing0.length?` Bültende olup bu PDF'te görünmeyen ${missing0.length} maç var: lig kapalı kalmış ya da sayfa sonuna kadar yüklenmemiş olabilir. Onlara dokunulmadı (ertelendi sayılmadı).`:""}${isI&&parseIddaaPages.stat&&(parseIddaaPages.stat.live||parseIddaaPages.stat.notyet)?` PDF alındığında ${parseIddaaPages.stat.live} maç canlıydı, ${parseIddaaPages.stat.notyet} maç başlamamıştı; bunlar alınmadı.`:""}</div>
    <div class="vlist" style="margin-top:8px;max-height:55dvh">${res.map((x,i)=>{const diff=!x.r.ert&&x.m.ms&&(x.m.ms!==x.r.ms||x.m.iy!==x.r.iy);
      return `<label style="border-bottom:0"><input type="checkbox" data-mi="${i}" ${x.ambiguous||x.half||x.r.swapped||x.bad||(diff&&!isI)?"":"checked"}><span><b>${esc(x.m.ev)} – ${esc(x.m.dep)}</b><br><small class="note">${dshort(x.m.tarih)} ${esc(x.m.saat)} · ${esc(x.m.lig)}</small></span><em style="color:var(--ink);font-weight:700">${x.r.ert?'<span class="bd" style="background:var(--z-bg);color:var(--z-ink)">ERTELENDİ</span>':esc(x.r.iy)+" / "+esc(x.r.ms)}</em></label>
-     <div class="note" id="mkn${i}" style="padding:0 10px 8px 36px;border-bottom:1px solid var(--line);font-size:11.5px">${x.r.swapped?'<b style="color:var(--warn)">Bültende ev sahibi/deplasman Mackolik\'in tersi yazılmış; skor bülten sırasına göre çevrildi. Doğruysa işaretle. </b>':x.bad?'<b style="color:var(--bad)">İY skoru MS skorundan büyük görünüyor, PDF satırını kontrol et. </b>':x.ambiguous?'<b style="color:var(--warn)">Başka bir maça da benziyor, kontrol et. </b>':x.half?`<b style="color:var(--warn)">Olası eşleşme: aynı saatte ${x.half==="ev"?"deplasman":"ev sahibi"} tuttu ama ${x.half==="ev"?"ev sahibi":"deplasman"} Mackolik'te farklı. Sadece kısaltma/farklı yazımsa işaretle; rakip gerçekten başkaysa (örn. kupa maçı oynanmış) işaretleme. </b>`:x.weak?'<b style="color:var(--warn)">İsim farklı yazılmış. </b>':""}${diff?(isI?`<b style="color:var(--bad)">Kayıtlı skor farklıydı (${esc((x.m.iy?x.m.iy+" / ":"")+x.m.ms)}); iddaa'ya göre düzeltilecek. </b>`:`<b style="color:var(--bad)">Kayıtlı skor farklı (şu an ${esc((x.m.iy?x.m.iy+" / ":"")+x.m.ms)}); işaretsiz geldi, emin değilsen dokunma. </b>`):""}${SRCN}: ${esc(x.r.saat)} “${esc(x.r.blob?x.r.blob:(x.r.ev||"(boş)")+" – "+x.r.dep)}”</div>`}).join("")}</div>
+     <div class="note" id="mkn${i}" style="padding:0 10px 8px 36px;border-bottom:1px solid var(--line);font-size:11.5px">${x.r.exK?`<b style="color:var(--warn)">${x.r.exK==="UZT"||/^UZ/i.test(x.r.exK)?"Uzatmaya":"Penaltıya"} gitti (PDF son skor ${esc(x.r.msF)}). 90 dk skoru ${esc(x.r.ms)} olarak çıkarıldı: ${esc(x.r.exWhy)}. </b>`:""}${x.r.swapped?'<b style="color:var(--warn)">Bültende ev sahibi/deplasman Mackolik\'in tersi yazılmış; skor bülten sırasına göre çevrildi. Doğruysa işaretle. </b>':x.bad?'<b style="color:var(--bad)">İY skoru MS skorundan büyük görünüyor, PDF satırını kontrol et. </b>':x.ambiguous?'<b style="color:var(--warn)">Başka bir maça da benziyor, kontrol et. </b>':x.half?`<b style="color:var(--warn)">Olası eşleşme: aynı saatte ${x.half==="ev"?"deplasman":"ev sahibi"} tuttu ama ${x.half==="ev"?"ev sahibi":"deplasman"} Mackolik'te farklı. Sadece kısaltma/farklı yazımsa işaretle; rakip gerçekten başkaysa (örn. kupa maçı oynanmış) işaretleme. </b>`:x.weak?'<b style="color:var(--warn)">İsim farklı yazılmış. </b>':""}${diff?(isI?`<b style="color:var(--bad)">Kayıtlı skor farklıydı (${esc((x.m.iy?x.m.iy+" / ":"")+x.m.ms)}); iddaa'ya göre düzeltilecek. </b>`:`<b style="color:var(--bad)">Kayıtlı skor farklı (şu an ${esc((x.m.iy?x.m.iy+" / ":"")+x.m.ms)}); işaretsiz geldi, emin değilsen dokunma. </b>`):""}${SRCN}: ${esc(x.r.saat)} “${esc(x.r.blob?x.r.blob:(x.r.ev||"(boş)")+" – "+x.r.dep)}”</div>`}).join("")}</div>
    ${missing.length?`<div class="card" id="mkmiss" style="margin-top:10px;border-color:var(--warn)"><h2>Mackolik'te bulunamayan ${missing.length} maç</h2>
      <p class="note" style="margin:0 0 6px">Bu bülten maçları PDF'te yok ya da adı çok farklı yazılmış. Genelde <b>ertelenmiş / oynanmamış</b> maçlardır. Yapay zeka önce Mackolik'teki eşleşmemiş satırlarla karşılaştırır; bulduğu skorları önerir.</p>
      <div id="mkmiss-ai" class="note"></div>
@@ -8193,7 +8210,7 @@ const SI={
  reset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4v6h6"/><path d="M4.6 15a8 8 0 1 0 1.9-8.3L4 10"/></svg>',
  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>',
 };
-const APP_VER="124";
+const APP_VER="125";
 let toastT=null;
 function toast(msg){ const t=$("toast"); if(!t) return; t.innerHTML=`<span>${SI.check}</span>${esc(msg)}`; t.hidden=false; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.hidden=true,250) },1600) }
 async function saveCfg(patch,msg){ profile.cfg=Object.assign({},profile.cfg||{},patch); applyCfg(); try{ if(db) await db.doc("settings/profile").set(Object.assign({},profile)); toast(msg||"Kaydedildi") }catch(e){ toast("Kaydedilemedi, tekrar dene") } }
