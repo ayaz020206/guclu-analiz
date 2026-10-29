@@ -3201,6 +3201,9 @@ function rebuild(){
 
 // ---------- columns ----------
 const O=(k,label,grp,first)=>({id:k,label,grp,kind:"odd",L:!!first,get:m=>m[k],txt:m=>fmt(m[k])});
+// v135: Oran Arşivi — İY/MS oranları küsuratsız (aşağı kesilir, yuvarlanmaz: 34,90 → 34)
+const trO=v=>String(Math.floor(+v+1e-9));
+const OT=(k,label,grp,first)=>({id:k,label,grp,kind:"odd",tr:true,L:!!first,get:m=>m[k],txt:m=>m[k]==null?"":trO(m[k])});
 const hasIY=o=>o&&o.iy!=null;
 const B=(id,label,grp,first,fn,y,n)=>({id,label,grp,kind:"res",L:!!first,bin:true,y,n,fn,get:m=>{if(!m.o) return null; const v=fn(m.o); return v==null?null:(v?y:n)},txt:m=>{const v=m.o?fn(m.o):null; return v==null?"":(v?y:n)},cls:m=>{const v=m.o?fn(m.o):null; return v==null?"":v?"G":"R"}});
 const COLDEFS=[
@@ -3221,7 +3224,7 @@ const COLDEFS=[
  O("tg01","0-1","Toplam Gol",1),O("tg23","2-3","Toplam Gol"),O("tg45","4-5","Toplam Gol"),O("tg6","6+","Toplam Gol"),
  O("iy1","İY 1","İlk Yarı Sonucu",1),O("iyx","İY X","İlk Yarı Sonucu"),O("iy2","İY 2","İlk Yarı Sonucu"),
  O("iy15_alt","Alt","İY 1,5 A/Ü",1),O("iy15_ust","Üst","İY 1,5 A/Ü"),
- O("iyms11","1/1","İY/MS Oran",1),O("iyms10","1/X","İY/MS Oran"),O("iyms12","1/2","İY/MS Oran"),O("iyms01","X/1","İY/MS Oran"),O("iyms00","X/X","İY/MS Oran"),O("iyms02","X/2","İY/MS Oran"),O("iyms21","2/1","İY/MS Oran"),O("iyms20","2/X","İY/MS Oran"),O("iyms22","2/2","İY/MS Oran"),
+ OT("iyms11","1/1","İY/MS Oran",1),OT("iyms10","1/X","İY/MS Oran"),OT("iyms12","1/2","İY/MS Oran"),OT("iyms01","X/1","İY/MS Oran"),OT("iyms00","X/X","İY/MS Oran"),OT("iyms02","X/2","İY/MS Oran"),OT("iyms21","2/1","İY/MS Oran"),OT("iyms20","2/X","İY/MS Oran"),OT("iyms22","2/2","İY/MS Oran"),
  B("r_iy05","0.5","Sonuç · İlk Yarı",1,o=>hasIY(o)?o.iyt>0.5:null,"Ü","A"),
  B("r_iy15","1.5","Sonuç · İlk Yarı",0,o=>hasIY(o)?o.iyt>1.5:null,"Ü","A"),
  B("r_iyev","Ev","Sonuç · İlk Yarı",0,o=>hasIY(o)?o.ih>0:null,"GOL","YOK"),
@@ -3249,7 +3252,7 @@ const ODDS_GROUPS=[["MS 1-X-2",["ms1","msx","ms2"]],["İY 1-X-2",["iy1","iyx","i
 // ---------- filter state ----------
 const F={}; // colId -> {set:Set<string>} | {min,max}
 let status="p", q="", sortBy=null, sortDir=1, limit=100, hitCols=new Set(), refId=null;
-function valKey(c,m){const v=c.get(m); if(v==null||v==="") return ""; return c.kind==="odd"?fmt(v):String(v)}
+function valKey(c,m){const v=c.get(m); if(v==null||v==="") return ""; return c.kind==="odd"?(c.tr?trO(v):fmt(v)):String(v)}
 function passes(m,skip){
   if(status==="p"&&!m.o) return false;
   if(status==="u"&&(m.o||m.ert)) return false;
@@ -3340,7 +3343,7 @@ function renderArBets(played){ const el=$("arbet-in"); if(!el) return;
 function renderChips(){
   const out=[];
   for(const id in F){const c=CMAP[id],f=F[id]; let d;
-    if(f.set){const a=[...f.set]; d=a.length<=3?a.map(x=>x||"(boş)").join(", "):a.length+" değer"} else d=(f.min!=null?"≥ "+fmt(f.min):"")+(f.min!=null&&f.max!=null?" ve ":"")+(f.max!=null?"≤ "+fmt(f.max):"");
+    if(f.set){const a=[...f.set]; d=a.length<=3?a.map(x=>x||"(boş)").join(", "):a.length+" değer"} else d=(f.min!=null?"≥ "+(c.tr?trO(f.min):fmt(f.min)):"")+(f.min!=null&&f.max!=null?" ve ":"")+(f.max!=null?"≤ "+(c.tr?trO(f.max):fmt(f.max)):"");
     out.push(`<button class="chip" data-rm="${id}"><span>${esc(shortName(c))}: <b>${esc(d)}</b></span><span class="x">✕</span></button>`)}
   if(sortBy) out.push(`<button class="chip" data-rm="__sort"><span>Sıra: <b>${esc(shortName(CMAP[sortBy]))} ${sortDir>0?"artan":"azalan"}</b></span><span class="x">✕</span></button>`);
   if(out.length>1||(out.length&&q)) out.push(`<button class="chip" data-rm="__all" style="border-color:var(--bad);color:var(--bad)"><span>Tümünü temizle</span></button>`);
@@ -3391,14 +3394,14 @@ function openFilter(id){
   openPopup(`<div class="sh-head"><div><b>${esc(c.grp)} · ${esc(c.label)}</b><small>${vals.length} farklı değer</small></div><button class="xbtn" data-close aria-label="Kapat">✕</button></div>
    <div class="sh-body">
      <div class="two"><button class="tbtn" data-sort="1">${numeric?"Küçükten büyüğe":"A → Z"}</button><button class="tbtn" data-sort="-1">${numeric?"Büyükten küçüğe":"Z → A"}</button></div>
-     <input id="fv-q" type="search" placeholder="${numeric?"Oran yaz… örn. 1,68":"Ara…"}" autocomplete="off" inputmode="${numeric?"decimal":"text"}">
+     <input id="fv-q" type="search" placeholder="${c.tr?"Oran yaz… örn. 34 (küsuratsız)":numeric?"Oran yaz… örn. 1,68":"Ara…"}" autocomplete="off" inputmode="${numeric?"decimal":"text"}">
      <label style="display:flex;gap:10px;align-items:center;font-weight:600;padding:0 2px"><input type="checkbox" id="fv-all">Tümünü seç</label>
      <div class="vlist" id="fv-list"></div>
-     ${numeric?`<div><div class="note" style="margin-bottom:4px">ya da aralık:</div><div class="two"><input id="fv-min" inputmode="decimal" placeholder="En az" value="${cur&&!cur.set&&cur.min!=null?fmt(cur.min):""}"><input id="fv-max" inputmode="decimal" placeholder="En çok" value="${cur&&!cur.set&&cur.max!=null?fmt(cur.max):""}"></div></div>`:""}
+     ${numeric?`<div><div class="note" style="margin-bottom:4px">ya da aralık:</div><div class="two"><input id="fv-min" inputmode="decimal" placeholder="En az" value="${cur&&!cur.set&&cur.min!=null?(c.tr?trO(cur.min):fmt(cur.min)):""}"><input id="fv-max" inputmode="decimal" placeholder="En çok" value="${cur&&!cur.set&&cur.max!=null?(c.tr?trO(cur.max):fmt(cur.max)):""}"></div></div>`:""}
    </div>
    <div class="sh-foot"><button class="tbtn" id="fv-clear">Filtreyi kaldır</button><button class="tbtn primary" id="fv-ok">Uygula</button></div>`);
   const listEl=$("fv-list"), qi=$("fv-q");
-  const visible=()=>{const t=qi.value.trim().toLocaleUpperCase("tr").replace(".",","); return t?vals.filter(v=>numeric?v.startsWith(t):v.toLocaleUpperCase("tr").includes(t)):vals};
+  const visible=()=>{const t=qi.value.trim().toLocaleUpperCase("tr").replace(".",","); return t?vals.filter(v=>c.tr?v===t.split(",")[0]:numeric?v.startsWith(t):v.toLocaleUpperCase("tr").includes(t)):vals};
   const draw=()=>{const vs=visible(); listEl.innerHTML=vs.length?vs.map(v=>`<label><input type="checkbox" data-v="${esc(v)}" ${sel.has(v)?"checked":""}><span>${esc(v===""?"(boş)":v)}</span><em>${cnt.get(v)}</em></label>`).join(""):`<div class="empty" style="padding:14px">Eşleşen değer yok</div>`; $("fv-all").checked=vs.length>0&&vs.every(v=>sel.has(v))};
   draw();
   let typed=false;
@@ -3409,7 +3412,7 @@ function openFilter(id){
   $("fv-clear").addEventListener("click",()=>{delete F[id]; hitCols.delete(id); if(sortBy===id) sortBy=null; closePopup(); limit=200; renderGrid()});
   $("fv-ok").addEventListener("click",()=>{
     const mn=numeric?num($("fv-min").value):null, mx=numeric?num($("fv-max").value):null;
-    if(mn!=null||mx!=null){F[id]={min:mn,max:mx}}
+    if(mn!=null||mx!=null){F[id]=c.tr?{min:mn!=null?Math.floor(mn+1e-9):null,max:mx!=null?Math.floor(mx+1e-9)+0.99999:null}:{min:mn,max:mx}}
     else if(sel.size===vals.length&&!typed){delete F[id]}
     else {F[id]={set:new Set([...sel].filter(v=>cnt.has(v)))}}
     closePopup(); limit=200; renderGrid();
@@ -3476,7 +3479,7 @@ function liveCardHTML(m){ const L=liveOf(m); if(!L) return "";
 function openMatch(id){
   const m=byId.get(id)||matches.find(x=>x.id===id); if(!m) return;
   const groups=ODDS_GROUPS.map(([name,keys])=>{
-    const cells=keys.map(k=>{const c=CMAP[k]; const t=c.txt(m); if(!t) return ""; if(c.kind!=="odd") return `<div class="od"><small>${esc(c.label)}</small><b>${esc(t)}</b></div>`; const on=draft.some(d=>d.id===m.id&&d.key===k); return `<button class="od${on?" on":""}" data-add="${k}"><small>${esc(c.label)}</small><b>${esc(t)}</b></button>`}).join("");
+    const cells=keys.map(k=>{const c=CMAP[k]; const t=c.txt(m); if(!t) return ""; if(c.kind!=="odd") return `<div class="od"><small>${esc(c.label)}</small><b>${esc(t)}</b></div>`; const on=draft.some(d=>d.id===m.id&&d.key===k); return `<button class="od${on?" on":""}" data-add="${k}"><small>${esc(c.label)}</small><b>${esc(fmt(m[k]))}</b></button>`}).join("");
     return cells?`<div><div class="note" style="margin-bottom:4px;font-weight:600;color:var(--ink)">${esc(name)}</div><div class="odgrid">${cells}</div></div>`:""}).join("");
   const opts=ODDS_GROUPS.filter(([name,keys])=>["MS 1-X-2","İY 1-X-2","İY/MS"].includes(name)&&keys.every(k=>CMAP[k].txt(m))).map(([name,keys],i)=>{
     const avail=keys.filter(k=>CMAP[k].txt(m));
@@ -8468,7 +8471,7 @@ const SI={
  reset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4v6h6"/><path d="M4.6 15a8 8 0 1 0 1.9-8.3L4 10"/></svg>',
  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>',
 };
-const APP_VER="134";
+const APP_VER="135";
 let toastT=null;
 function toast(msg){ const t=$("toast"); if(!t) return; t.innerHTML=`<span>${SI.check}</span>${esc(msg)}`; t.hidden=false; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.hidden=true,250) },1600) }
 async function saveCfg(patch,msg){ profile.cfg=Object.assign({},profile.cfg||{},patch); applyCfg(); try{ if(db) await db.doc("settings/profile").set(Object.assign({},profile)); toast(msg||"Kaydedildi") }catch(e){ toast("Kaydedilemedi, tekrar dene") } }
