@@ -2635,6 +2635,9 @@ body.ga-offline .hclock{color:#E05A4F}body.ga-offline .hdr,body.ga-offline heade
 .h15-g .kn{background:linear-gradient(180deg,#B8902C,#8C6A1C)}
 .h15-g .dg{background:linear-gradient(180deg,#2F7A4B,#1F5A36)}.h15-g .yg{background:linear-gradient(180deg,#B33A2E,#8C2A21)}
 .h15-g td.ok{background:#1F8A4C}.h15-g td.no{background:#B33A2E}
+.h15-yzc{display:flex;gap:8px;align-items:flex-start;margin:8px 2px 2px;font-size:12.5px;font-weight:700;color:#33415A;cursor:pointer}.h15-yzc input{margin-top:2px;width:18px;height:18px;flex:0 0 auto}.h15-yzc small{display:block;font-weight:400;color:#5E6B80;font-size:11.5px;margin-top:2px}
+.h15-sv{margin:8px 0}.h15-sv:disabled{opacity:.75}
+.tk-kol{margin-top:10px}.tk-kol .tkh th{padding:5px 0;font-size:11px}.tk-kol .h15-d td{font-size:10px;padding:4px 0}.tk-kol .h15-gw{max-height:460px;overflow:auto}
 .h15-g tr.an th{font-size:11px}
 .h15-g th.v,.h15-g td.v{padding:6px 0}
 .h15-g th.v span,.h15-g td.v span{writing-mode:vertical-rl;transform:rotate(180deg);display:inline-block;white-space:nowrap;font-size:10.5px;letter-spacing:.02em}
@@ -7551,7 +7554,7 @@ function ttYzCheck(rows,S,G){ const V=[],Bk=[]; S.forEach((s,i)=>(s.length>1?V:B
   let N=1; for(const i of V) N*=S[i].length; let vol=0; { const C=(n,k)=>{ let c=1; for(let i=1;i<=k;i++) c=c*(n-k+i)/i; return c }; for(let k=0;k<=r;k++) vol+=C(L,k)*Math.pow(2,k) }
   if(N*vol>TT_YZ_WORK) return {err:`Bu kolon yüzdesel hesap için çok büyük (${N.toLocaleString("tr-TR")} kolonluk tam sistem). Çifte/kapalı sayısını azalt.`};
   return {V,Bk,L,nb,r,N} }
-async function ttYzPick(rows,S,G,K,onp){ const ck=ttYzCheck(rows,S,G); if(ck.err) throw new Error(ck.err); const {V,Bk,L,r,N}=ck;
+async function ttYzPick(rows,S,G,K,onp,cover){ const ck=ttYzCheck(rows,S,G); if(ck.err) throw new Error(ck.err); const {V,Bk,L,r,N}=ck;
   const P=rows.map(x=>x.A.p); let bd=[1]; for(const i of Bk){ const p=P[i][S[i][0]]; const n=new Array(bd.length+1).fill(0); bd.forEach((v,k)=>{ n[k]+=v*(1-p); n[k+1]+=v*p }); bd=n }
   const Fh=new Float64Array(L+1); for(let h=0;h<=L;h++){ let s=0; for(let k=0;k<bd.length;k++) if(h+k>=G) s+=bd[k]; Fh[h]=s } // sistemde h doğru yapan kolonun hedefe ulaşma ihtimali (bankolara göre)
   const st=new Array(L); let s=1; for(let i=L-1;i>=0;i--){ st[i]=s; s*=3 } const NY=s, py=new Float64Array(NY);
@@ -7561,17 +7564,34 @@ async function ttYzPick(rows,S,G,K,onp){ const ck=ttYzCheck(rows,S,G); if(ck.err
   const ball=(c,f)=>{ for(let i=0;i<L;i++) D[i]=Math.floor(c/st[i])%3; f(c,L); const go=(start,depth,y)=>{ if(depth===r) return; for(let i=start;i<L;i++){ const di=D[i]; for(let v=0;v<3;v++){ if(v===di) continue; const y2=y+(v-di)*st[i]; f(y2,L-depth-1); go(i+1,depth+1,y2) } } }; go(0,0,c) };
   const gain=c=>{ let g=0; ball(c,(y,h)=>{ const b=best[y]; if(h>b) g+=py[y]*(Fh[h]-Fh[b]) }); return g };
   // ikili yığın (en büyük kazanç üstte; eşitlikte küçük indeks — sonuç her seferinde aynı)
+  // v137: DAĞILIM MODU — her maçta işaretlediğin seçenekler, kolonlara kendi ihtimalleri oranında dağıtılır
+  // (ör. X %21 · 2 %61 seçildiyse: 100 kolonun ≈26'sında X, ≈74'ünde 2). Bu kotalar içinde kalan en sağlam (hedefe ulaşma ihtimalini en çok artıran) kolonlar seçilir.
+  const dg=(c,i)=>Math.floor(c/st[i])%3;
+  let Q=null; if(cover){ Q=new Int32Array(L*3); for(let i=0;i<L;i++){ const sel=S[V[i]], sp=sel.reduce((a,v)=>a+P[V[i]][v],0);
+      const raw=sel.map(v=>K*P[V[i]][v]/sp), q=raw.map(Math.floor); let rest=K-q.reduce((a,b)=>a+b,0);
+      const ord=sel.map((v,j)=>j).sort((x,y)=>(raw[y]-q[y])-(raw[x]-q[x])||P[V[i]][sel[y]]-P[V[i]][sel[x]]); for(const j of ord){ if(rest<=0) break; q[j]++; rest-- }
+      if(K>=sel.length) for(let j=0;j<sel.length;j++) if(q[j]===0){ let jm=0; for(let t=1;t<sel.length;t++) if(q[t]>q[jm]) jm=t; q[jm]--; q[j]++ } // her işaret en az 1 kolonda
+      sel.forEach((v,j)=>Q[i*3+v]=q[j]) } }
+  const cnt=new Int32Array(L*3), fits=c=>{ for(let i=0;i<L;i++) if(cnt[i*3+dg(c,i)]>=Q[i*3+dg(c,i)]) return false; return true };
   const hc=new Float64Array(cand.length), hg=new Float64Array(cand.length); let hn=0;
   const less=(a,b)=>hg[a]>hg[b]||(hg[a]===hg[b]&&hc[a]<hc[b]);
   const swap=(a,b)=>{ let t=hc[a]; hc[a]=hc[b]; hc[b]=t; t=hg[a]; hg[a]=hg[b]; hg[b]=t };
   const up=i=>{ while(i>0){ const p=(i-1)>>1; if(less(i,p)){ swap(i,p); i=p } else break } }, down=i=>{ for(;;){ const l=2*i+1, rr=l+1; let m=i; if(l<hn&&less(l,m)) m=l; if(rr<hn&&less(rr,m)) m=rr; if(m===i) break; swap(i,m); i=m } };
+  const pop=()=>{ hn--; if(hn){ hc[0]=hc[hn]; hg[0]=hg[hn]; down(0) } };
   let lastY=performance.now();
   for(let j=0;j<cand.length;j++){ hc[hn]=cand[j]; hg[hn]=gain(cand[j]); up(hn); hn++; if(performance.now()-lastY>40){ if(onp) onp(.5*j/cand.length,0); await new Promise(z=>setTimeout(z,0)); lastY=performance.now() } }
-  const pick=[];
-  while(pick.length<K&&hn){ const c=hc[0], ng=gain(c);
-    if(hn===1||ng>=Math.max(hn>1?hg[1]:-1,hn>2?hg[2]:-1)-1e-18){ pick.push(c); hn--; if(hn){ hc[0]=hc[hn]; hg[0]=hg[hn]; down(0) } ball(c,(y,h)=>{ if(h>best[y]) best[y]=h }) }
+  const pick=[], take=c=>{ pick.push(c); for(let i=0;i<L;i++) cnt[i*3+dg(c,i)]++; ball(c,(y,h)=>{ if(h>best[y]) best[y]=h }) };
+  while(pick.length<K&&hn){ const c=hc[0];
+    if(Q&&!fits(c)){ pop(); continue } // kotayı aşan kolon bir daha uygun olamaz (sayılar yalnız artar)
+    const ng=gain(c);
+    if(hn===1||ng>=Math.max(hn>1?hg[1]:-1,hn>2?hg[2]:-1)-1e-18){ pop(); take(c) }
     else { hg[0]=ng; down(0) }
     if(performance.now()-lastY>40){ if(onp) onp(.5+.5*pick.length/K,pick.length); await new Promise(z=>setTimeout(z,0)); lastY=performance.now() } }
+  if(Q&&pick.length<K){ const have=new Set(pick); // nadir: kalan kotalara uyan aday kalmadıysa, kalan kotalardan kolon kurulur
+    while(pick.length<K){ const dgt=[]; for(let i=0;i<L;i++){ const sel=S[V[i]]; let bv=sel[0], bq=-1e9; for(const v of sel){ const r=Q[i*3+v]-cnt[i*3+v]; if(r>bq||(r===bq&&P[V[i]][v]>P[V[i]][bv])){ bq=r; bv=v } } dgt.push(bv) }
+      let c=dgt.reduce((a,v,i)=>a+v*st[i],0);
+      if(have.has(c)){ let ok=false; for(let i=L-1;i>=0&&!ok;i--) for(const v of S[V[i]]){ if(v===dgt[i]) continue; const c2=c+(v-dgt[i])*st[i]; if(!have.has(c2)){ c=c2; ok=true; break } } if(!ok) break }
+      have.add(c); take(c) } }
   return pick.map(c=>{ const k=S.map(x=>x[0]); V.forEach((pos,i)=>k[pos]=Math.floor(c/st[i])%3); return k }) }
 function ttGarHTML(W,S,rows,cols){ const key=totoCur+"|"+ttPlan+"|"+S.map(s=>s.join("")).join(","), G=ttGarRes&&ttGarRes.key===key?ttGarRes:null, bd=ttBd(), TL=n=>(n*bd).toLocaleString("tr-TR",{maximumFractionDigits:2})+" TL", N=v=>v.toLocaleString("tr-TR");
   const nb=S.filter(s=>s.length===1).length, nc=S.filter(s=>s.length===2).length, nk=S.filter(s=>s.length===3).length, Ffull=[15,14,13,12].map(g=>ttProb(rows,S,g)), noOdds=rows.filter(r=>!r.A).length;
@@ -7589,6 +7609,7 @@ function ttGarHTML(W,S,rows,cols){ const key=totoCur+"|"+ttPlan+"|"+S.map(s=>s.j
      return `<div class="h15-yz"><div class="h15-bar">Yüzdesel Sistem · ihtimale göre</div>
       <p class="h15-yzn">Kolonlar maçların hesaplanan ihtimaline göre seçilir: istediğin kolon sayısıyla <b>${ttYzG} ve üstü doğru</b> yapma ihtimalini en yükseğe çıkaran kolonlar alınır. Olmayacak senaryolara kolon harcanmaz. <b>Garanti yoktur.</b> Aynı veriyle her seferinde aynı kolonlar çıkar.</p>
       ${chk.err?`<div class="nt-ban" style="margin:6px 0 0">${esc(chk.err)}</div>`:`<div class="h15-yzr"><label>Kolon sayısı<input id="tt-yzn" inputmode="numeric" value="${dK}"></label><label>Hedef<select id="tt-yzg">${[12,13,14,15].map(g=>`<option value="${g}" ${g===ttYzG?"selected":""}>${g} ve üstü</option>`).join("")}</select></label></div>
+      <label class="h15-yzc"><input type="checkbox" id="tt-yzc" ${ttYzCov?"checked":""}><span>Kolonları yüzdelere göre dağıt (önerilen)<small>Her maçta işaretlediğin seçenekler kolonlara kendi yüzdesi oranında dağılır: X %21 · 2 %61 seçtiysen 100 kolonun ≈26'sında X, ≈74'ünde 2 olur. Bu dağılımın içinden en sağlam kolonlar seçilir. Kapatırsan yalnız en yüksek ihtimale bakılır; düşük yüzdeli işaret hiç kolona girmeyebilir.</small></span></label>
       <small class="h15-yzt">Tutar: <b id="tt-yztl">${TL(dK)}</b>${ttGarMemo[key+"|"+ttYzG]?` · aynı hedefin garantili sistemi ${N(ttGarMemo[key+"|"+ttYzG].n)} kolon`:""}</small>
       <button type="button" class="h15-yzb${G&&G.yz?" on":""}" id="tt-yzgo" ${ttGarBusy?"disabled":""}>Yüzdesel Hesapla</button>`}</div>` })()}
    <div id="tt-garout">`;
@@ -7598,7 +7619,8 @@ function ttGarHTML(W,S,rows,cols){ const key=totoCur+"|"+ttPlan+"|"+S.map(s=>s.j
     const at=G.at?new Date(G.at):null, show=Math.min(ttGarShow,L.length);
     const hd=W.maclar.map((t,m)=>`<th class="v"><span>${m+1}:${esc(ttTitle(t.ev).toLocaleUpperCase("tr"))}-${esc(ttTitle(t.dep).toLocaleUpperCase("tr"))}</span></th>`).join("");
     const dist=[2,1,0].map(j=>`<tr><th class="lb">${TOTO_LAB[j]}</th>${W.maclar.map((t,m)=>`<td class="v${res[m]===j?" ok":""}"><span>${N(G.kol.filter(k=>k[m]===j).length)}</span></td>`).join("")}<td class="dg">—</td><td class="yg">—</td></tr>`).join("");
-    h+=`<div class="h15-hd"><div><b>Formül Adı:</b> ${G.yz?`Yüzdesel Sistem · ${G.g} ve üstü hedefli`:`${G.g} Garantili Özel Sistem`}</div><div><b>Kolon Sayısı:</b> ${N(G.kol.length)} · ${TL(G.kol.length)}</div><div><b>Devam Eden Kupon Sayısı:</b> ${N(dev)}</div><div><b>Tarih-Saat:</b> ${at?at.toLocaleDateString("tr-TR")+" "+at.toLocaleTimeString("tr-TR"):"–"}</div><div><b>Bilgi:</b> Kuponlar başarı sırasına göre listelenir.</div></div>
+    h+=`<div class="h15-hd"><div><b>Formül Adı:</b> ${G.yz?`Yüzdesel Sistem · ${G.g} ve üstü hedefli${G.cov?" · yüzdelere göre dağıtılmış":""}`:`${G.g} Garantili Özel Sistem`}</div><div><b>Kolon Sayısı:</b> ${N(G.kol.length)} · ${TL(G.kol.length)}</div><div><b>Devam Eden Kupon Sayısı:</b> ${N(dev)}</div><div><b>Tarih-Saat:</b> ${at?at.toLocaleDateString("tr-TR")+" "+at.toLocaleTimeString("tr-TR"):"–"}</div><div><b>Bilgi:</b> Kuponlar başarı sırasına göre listelenir.</div></div>
+     <button type="button" class="h15-yzb h15-sv" id="tt-garsave2" ${G.saved?"disabled":""}>${G.saved?"Kuponlarım'a kaydedildi ✓":`Bu ${N(G.kol.length)} kolonu Kuponlarım'a kaydet`}</button>
      <div class="h15-cnt">${N(G.kol.length)} kolondan ${N(show)} tanesi listelenmiştir.${nPl?` (${nPl} maçın sonucu belli)`:""}</div>
      <div class="h15-gw"><table class="h15-g"><thead><tr class="an"><th class="kn">Ana</th>${S.map(x=>`<th>${x.map(j=>TOTO_LAB[j]).join("")}</th>`).join("")}<th class="dg">${nPl?Math.max(0,...K.map(x=>x.d)):0}</th><th class="yg">${nPl?Math.min(...K.map(x=>x.y)):0}</th></tr>
       <tr class="nm"><th class="kn v"><span>KUPON NUMARASI</span></th>${hd}<th class="dg v"><span>DOĞRU MAÇ SAYISI</span></th><th class="yg v"><span>YANLIŞ MAÇ SAYISI</span></th></tr></thead>
@@ -7828,6 +7850,15 @@ function ttKuponlarHTML(){ const all=ttKupItems();
   return `<div class="tk-hd"><div><b>Kayıtlı kuponlar</b><small>${all.length} kupon · ${n("kazanan")} kazanan · ${n("bekleyen")} bekleyen</small></div>${L.length?`<span><small>Bu listede tutar</small><b>${ttTL(sumTl)}</b></span>`:""}</div>${tabs}
    ${G.length?G.map(g=>`<section class="tk-wk"><div class="tk-wh"><b>${g.W.hafta?g.W.hafta+". Hafta":esc(g.W.name)}</b><span>${ttKRange(g.W)} Programı</span><em>${g.L.length} kupon</em></div>${g.L.map(card).join("")}</section>`).join(""):`<div class="tk-empty"><b>${ttKF==="tum"?"Henüz kayıtlı kupon yok":"Bu bölümde kupon yok"}</b><span>${ttKF==="tum"?`Program ekranında kutuları işaretleyip alttaki <b>Kaydet</b>'e bas; dolu kolonların hepsi buraya gelir.`:`Diğer sekmelere bak.`}</span></div>`}
    <p class="tk-foot">Şerit: her kutu bir maç — yeşil tuttu, kırmızı tutmadı, gri sonuç bekleniyor. Kazanan: en az 12 doğru (Spor Toto'nun en düşük ikramiyesi). Kupona dokununca ayrıntısı açılır.</p>` }
+function ttKupKolHTML(x,res){ const N=v=>v.toLocaleString("tr-TR"), nPl=res.filter(v=>v!=null).length;
+  const K=x.kol.map((c,i)=>{ const k=[...c].map(ch=>TOTO_LAB.indexOf(ch)); let d=0,y=0; k.forEach((j,q)=>{ if(res[q]==null) return; if(res[q]===j) d++; else y++ }); return {i,k,d,y} });
+  const L=nPl?K.slice().sort((a,b)=>b.d-a.d||a.y-b.y||a.i-b.i):K, show=Math.min(L.length,500);
+  const dist=[0,1,2].map(j=>`<tr><th class="lb">${TOTO_LAB[j]}</th>${x.rows.map((r,q)=>`<td class="v${res[q]===j?" ok":""}">${N(K.filter(o=>o.k[q]===j).length)}</td>`).join("")}<td class="dg">—</td><td class="yg">—</td></tr>`).join("");
+  return `<div class="h15 tk-kol"><div class="h15-bar">Kupondaki kolonlar · ${N(K.length)} kolon</div>
+   <div class="h15-cnt">${nPl?`${nPl} maçın sonucu belli · kolonlar doğru sayısına göre sıralı`:"Maçlar oynanınca yeşil tuttu, kırmızı tutmadı gösterir"}${show<L.length?` · ilk ${N(show)} kolon gösteriliyor (hepsi için “Kolonları kopyala”)`:""}</div>
+   <div class="h15-gw"><table class="h15-g"><thead><tr class="tkh"><th class="kn">No</th>${x.rows.map((r,q)=>`<th>${q+1}</th>`).join("")}<th class="dg">D</th><th class="yg">Y</th></tr></thead>
+    <tbody>${L.slice(0,show).map(o=>`<tr><th class="kn">${o.i+1}</th>${o.k.map((j,q)=>`<td class="${res[q]==null?"":res[q]===j?"ok":"no"}">${TOTO_LAB[j]||"?"}</td>`).join("")}<td class="dg">${o.d}</td><td class="yg">${o.y}</td></tr>`).join("")}</tbody></table></div>
+   <div class="h15-bar">Maç tercihi dağılımı</div><div class="h15-gw"><table class="h15-g h15-d"><tbody>${dist}</tbody></table></div></div>` }
 function ttKupDetay(x){ const W=x.W, rows=x.rows, col=x.col||(ttIs4(x.open)?x.open:null), kno=(()=>{ let h=0; for(const c of (x.k+"|"+(x.at||""))) h=(h*31+c.charCodeAt(0))>>>0; return String(h).padStart(10,"0") })();
   const res=rows.map(r=>r.res?RES_I[r.res]:null), tips=x.S.map(s=>s.length===1?"B":s.length===2?"Ç":"K");
   let h=`<div class="ttdhd"><button type="button" class="ttdb" data-ttkd="" aria-label="Kuponlara dön">‹</button><div><b>KUPON DETAY</b><small>K. NO: ${kno}</small></div><span></span></div>
@@ -7841,6 +7872,7 @@ function ttKupDetay(x){ const W=x.W, rows=x.rows, col=x.col||(ttIs4(x.open)?x.op
       return `<tr class="mr${i%2?" od":""}"><td class="no">${t.no||i+1}</td><td class="dt">${d?`${ttDMY(d)} ${esc(sa)}`:"–"}</td><td class="km"><span class="nt-tm"><b>${esc(ttTitle(t.ev))}</b><i>-</i><b>${esc(ttTitle(t.dep))}</b></span></td>
        <td class="so"><span class="tk-res${rr==null?" p":""}">${r.res||"–"}</span></td>${TOTO_LAB.map((l,j)=>{ const on=s.includes(j); return `<td class="cb${j===2?" g-e":""}"><span class="ck${on?" on":""}${rr===j?(on?" hit":" miss"):""}" aria-label="${on?"seçili":"seçili değil"}"><span></span></span></td>` }).join("")}</tr>` }).join("")}
     </tbody><tfoot><tr class="sm"><td colspan="4" class="hzl"><span>${x.kol?"En iyi kolonun doğru sayısı":"Toplam doğru tahmin"}</span></td><td colspan="3" class="g-e"><b>${x.played?x.hit:"–"}</b><small>/${x.played||15}</small></td></tr></tfoot></table></div>
+   ${x.kol?ttKupKolHTML(x,res):""}
    <div class="tk-act">${x.open!=null?`<button class="tbtn primary" data-ttkop="${esc(x.id)}|${x.open}">Program ekranında aç</button>`:""}${x.kol?`<button class="tbtn" data-ttgcopy="${esc(x.id)}|${x.gar}">Kolonları kopyala</button><button class="tbtn tk-del" data-ttgdel="${esc(x.id)}|${x.gar}">Sil</button>`:`<button class="tbtn tk-del" data-ttkdel="${esc(x.id)}|${x.del}">Sil</button>`}</div>
    <details class="nt-det ttperfd"><summary>Kupon performansı · kolon kolon doğru sayıları</summary>${ttPerfHTML(x)}</details>
    <p class="tk-foot">Sarı kutu seçimin; yeşil çerçeve tuttu, kırmızı çerçeve gerçek sonucu gösterir (seçilmemiş). Bu sayfa kayıtlı kupon verisinden oluşturulur; resmî kupon görüntüsü değildir.</p>`;
@@ -7921,6 +7953,7 @@ function ttBudgetPlan(rows,budget,g){ const r=15-g, ok=rows.filter(x=>x.A), no=r
     if(!best||pin>best.pin) best={S,pin,est,N,nb,nc,nk:nk+no} }
   return best }
 let ttGarRes=null, ttGarBusy=false, ttGarShow=10; const ttGarMemo={}; let ttYzG=13, ttYzK=0;
+let ttYzCov=true; try{ if(localStorage.getItem("tt_yzdist")==="0") ttYzCov=false }catch(e){}
 function ttRecHTML(rec,short){ const P=Object.keys(TT_PLAN), avg=p=>rec.reduce((a,x)=>a+x.per[p].hit,0)/rec.length, best=p=>Math.max(...rec.map(x=>x.per[p].hit));
   const bc=(p,k)=>{ const a=rec.reduce((s,x)=>s+x.per[p][k][0],0), b=rec.reduce((s,x)=>s+x.per[p][k][1],0); return a?`%${Math.round(b/a*100)} (${b}/${a})`:"–" };
   return `<div class="card"><h2>Simülasyon: bugünkü kodla yeniden hesaplanan ${rec.length} hafta</h2><p class="note" style="margin:0 0 6px"><b>Gerçek performans değildir.</b> Kuponlar bugün, sonuçlar belliyken bugünkü kodla yeniden kuruldu (her hafta yalnız o haftadan önceki arşiv kullanıldı). Gerçek sonuç için yukarıdaki "maç öncesi kayıt" tablosuna bak.</p>
@@ -7988,24 +8021,26 @@ function ttBind(){ const el=$("toto-out");
       ttGarRes={key,g,kol:R.kolons,H,V,at:new Date().toISOString()}; ttGarShow=10; ttGarMemo[key+"|"+g]={n:R.kolons.length,p15:H.p15,p14:H.p14,p13:H.p13,p12:H.p12,noOdds:rows.filter(r=>!r.A).length} }catch(e){ ttGarRes=null; toast(e.message||String(e)) }
     ttGarBusy=false; const y=window.scrollY; await renderToto(); window.scrollTo(0,y) }));
   const yzN=$("tt-yzn"), yzG=$("tt-yzg"); if(yzN) yzN.addEventListener("input",()=>{ const v=Math.round(+String(yzN.value).replace(/[.\s]/g,"")); const t=$("tt-yztl"); if(t) t.textContent=v>0?(v*ttBd()).toLocaleString("tr-TR",{maximumFractionDigits:2})+" TL":"–" });
+  { const yc=$("tt-yzc"); if(yc) yc.addEventListener("change",()=>{ ttYzCov=yc.checked; try{ localStorage.setItem("tt_yzdist",ttYzCov?"1":"0") }catch(e){} }) }
   if(yzG) yzG.addEventListener("change",()=>{ ttYzG=+yzG.value; ttYzK=Math.round(+String(yzN.value).replace(/[.\s]/g,""))||0; const y=window.scrollY; Promise.resolve(renderToto()).then(()=>window.scrollTo(0,y)) });
   const yzB=$("tt-yzgo"); if(yzB) yzB.addEventListener("click",async()=>{ const Wc=TOTO.weeks[totoCur]; if(!Wc||ttGarBusy) return; const S=ttSel(Wc,ttPlan), rows=ttBuild(Wc), key=totoCur+"|"+ttPlan+"|"+S.map(s=>s.join("")).join(",");
     const K=Math.round(+String(yzN.value).replace(/[.\s]/g,"")); if(!(K>=1)){ toast("Kolon sayısı en az 1 olmalı"); return } if(K>20000){ toast("En fazla 20.000 kolon"); return } ttYzK=K; ttYzG=+yzG.value;
     ttGarBusy=true; const out=$("tt-garout"); out.innerHTML=`<p class="note" style="margin:8px 0 0">Yüzdesel kolonlar hesaplanıyor…</p>`; el.querySelectorAll("[data-ttgar],#tt-yzgo").forEach(x=>x.disabled=true);
     try{ if(S.some(x=>!x.length)) throw new Error("Her maçta en az bir kutu seçili olmalı");
-      const kol=await ttYzPick(rows,S,ttYzG,K,(f,n)=>{ out.innerHTML=`<p class="note" style="margin:8px 0 0">Yüzdesel kolonlar hesaplanıyor… %${Math.round(f*100)}${n?` (${n} kolon)`:""}</p>` });
+      const kol=await ttYzPick(rows,S,ttYzG,K,(f,n)=>{ out.innerHTML=`<p class="note" style="margin:8px 0 0">Yüzdesel kolonlar hesaplanıyor… %${Math.round(f*100)}${n?` (${n} kolon)`:""}</p>` },ttYzCov);
       // denetim: kolonlar seçimlerin içinde ve birbirinden farklı olmalı
       const keys=new Set(kol.map(k=>k.join(""))); if(keys.size!==kol.length) throw new Error("İç denetim: tekrar eden kolon bulundu, kaydedilmedi");
       if(!kol.every(k=>k.every((j,i)=>S[i].includes(j)))) throw new Error("İç denetim: seçim dışı kolon bulundu, kaydedilmedi");
       out.innerHTML=`<p class="note" style="margin:8px 0 0">Olasılıklar hesaplanıyor…</p>`;
       const H=await ttExactHits(rows,S,kol,()=>{}); let cmp=null; const M=ttGarMemo[key+"|"+ttYzG]; if(M&&M.n===kol.length) cmp=M;
-      ttGarRes={key,g:ttYzG,yz:true,kol,H,V:null,at:new Date().toISOString(),cmp}; ttGarShow=10 }catch(e){ ttGarRes=null; toast(e.message||String(e)) }
+      ttGarRes={key,g:ttYzG,yz:true,cov:ttYzCov,kol,H,V:null,at:new Date().toISOString(),cmp}; ttGarShow=10 }catch(e){ ttGarRes=null; toast(e.message||String(e)) }
     ttGarBusy=false; const y=window.scrollY; await renderToto(); window.scrollTo(0,y) });
   const gm=$("tt-garmore"); if(gm) gm.addEventListener("click",()=>{ ttGarShow+=ttGarShow<50?40:200; const y=window.scrollY; Promise.resolve(renderToto()).then(()=>window.scrollTo(0,y)) });
   const gc=$("tt-garcopy"); if(gc) gc.addEventListener("click",async()=>{ const Wc=TOTO.weeks[totoCur]; if(!ttGarRes||!Wc) return; const txt=`SPOR TOTO ${Wc.hafta?Wc.hafta+". hafta":Wc.name} · ${ttGarRes.yz?"yüzdesel "+ttGarRes.g+"+":ttGarRes.g+" garantili"} · ${ttGarRes.kol.length} kolon\nMaçlar: `+Wc.maclar.map(t=>t.no+"."+t.ev+"-"+t.dep).join(" | ")+"\n"+ttGarRes.kol.map((k,i)=>(i+1)+": "+k.map(j=>TOTO_LAB[j]).join(" ")).join("\n");
     try{ await navigator.clipboard.writeText(txt); toast(ttGarRes.kol.length+" kolon kopyalandı") }catch(e){ prompt("Kolonları kopyala:",txt) } });
-  const gs=$("tt-garsave"); if(gs) gs.addEventListener("click",async()=>{ const Wc=TOTO.weeks[totoCur]; if(!ttGarRes||!Wc) return; if(ttGarRes.kol.length>4000){ toast("4.000 kolondan büyük sistem kaydedilemez; kopyala"); return }
-    Wc.gar=(Wc.gar||[]).concat([{ad:ttGarRes.yz?`Yüzdesel ${ttGarRes.g}+ · ${ttPlanAd(ttPlan)}`:`${ttGarRes.g} Garantili · ${ttPlanAd(ttPlan)}`,g:ttGarRes.g,yz:!!ttGarRes.yz,kol:ttGarRes.kol.map(k=>k.map(j=>TOTO_LAB[j]).join("")),at:new Date().toISOString(),p:{p15:ttGarRes.H.p15,p14:ttGarRes.H.p14,p13:ttGarRes.H.p13}}]); await saveToto("Garantili kupon Kuponlarım'a kaydedildi"); renderToto() });
+  const gsF=async()=>{ const Wc=TOTO.weeks[totoCur]; if(!ttGarRes||!Wc) return; if(ttGarRes.saved){ toast("Bu kupon zaten Kuponlarım'da"); return } if(ttGarRes.kol.length>4000){ toast("4.000 kolondan büyük sistem kaydedilemez; kopyala"); return }
+    Wc.gar=(Wc.gar||[]).concat([{ad:ttGarRes.yz?`Yüzdesel ${ttGarRes.g}+ · ${ttPlanAd(ttPlan)}`:`${ttGarRes.g} Garantili · ${ttPlanAd(ttPlan)}`,g:ttGarRes.g,yz:!!ttGarRes.yz,kol:ttGarRes.kol.map(k=>k.map(j=>TOTO_LAB[j]).join("")),at:new Date().toISOString(),p:{p15:ttGarRes.H.p15,p14:ttGarRes.H.p14,p13:ttGarRes.H.p13}}]); ttGarRes.saved=true; await saveToto((ttGarRes.yz?"Yüzdesel":"Garantili")+" kupon ("+ttGarRes.kol.length.toLocaleString("tr-TR")+" kolon) Kuponlarım'a kaydedildi"); const y=window.scrollY; await renderToto(); window.scrollTo(0,y) };
+  ["tt-garsave","tt-garsave2"].forEach(id=>{ const b=$(id); if(b) b.addEventListener("click",gsF) });
   const bd=$("tt-bedel"); if(bd) bd.addEventListener("change",()=>{ toast("Bütçeler yeni kolon bedeline göre yeniden kuruluyor"); renderToto() });
   if(bd) bd.addEventListener("change",()=>{ const v=+String(bd.value).replace(",","."); if(db&&ttAdmin()&&v>0) db.doc("settings/sistem").get().then(d=>db.doc("settings/sistem").set(Object.assign(d.exists?d.data():{},{ttBedel:v,at:new Date().toISOString()}))).catch(()=>{}) });
   if(bd) bd.addEventListener("input",()=>{ ttBedel=bd.value.trim(); try{ localStorage.setItem("tt_bedel",ttBedel) }catch(e){} const tu=$("tt-tutar"), c=+tu.dataset.cols, v=+ttBedel.replace(",","."); tu.textContent=c&&ttBedel&&isFinite(v)?(c*v).toLocaleString("tr-TR",{maximumFractionDigits:2})+" TL":"–" });
@@ -8513,7 +8548,7 @@ const SI={
  reset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4v6h6"/><path d="M4.6 15a8 8 0 1 0 1.9-8.3L4 10"/></svg>',
  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>',
 };
-const APP_VER="136";
+const APP_VER="138";
 let toastT=null;
 function toast(msg){ const t=$("toast"); if(!t) return; t.innerHTML=`<span>${SI.check}</span>${esc(msg)}`; t.hidden=false; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.hidden=true,250) },1600) }
 async function saveCfg(patch,msg){ profile.cfg=Object.assign({},profile.cfg||{},patch); applyCfg(); try{ if(db) await db.doc("settings/profile").set(Object.assign({},profile)); toast(msg||"Kaydedildi") }catch(e){ toast("Kaydedilemedi, tekrar dene") } }
