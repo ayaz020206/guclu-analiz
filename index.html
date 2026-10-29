@@ -8134,6 +8134,9 @@ const IM_BETS=[
  ["su05","2Y 0,5 Üst","İkinci yarı gol",o=>o.sh+o.sa>0],["sa05","2Y 0,5 Alt (golsüz)","İkinci yarı gol",o=>o.sh+o.sa===0],["su15","2Y 1,5 Üst","İkinci yarı gol",o=>o.sh+o.sa>1.5],["sa15","2Y 1,5 Alt","İkinci yarı gol",o=>o.sh+o.sa<1.5],
  ["byg","İki yarıda da gol","Yarılar",o=>o.iyt>0&&o.sh+o.sa>0],["y1","1. yarı daha gollü","Yarılar",o=>o.iyt>o.sh+o.sa],["y2","2. yarı daha gollü","Yarılar",o=>o.sh+o.sa>o.iyt],["ye","Yarılar eşit gollü","Yarılar",o=>o.sh+o.sa===o.iyt],
  ["eg","Ev sahibi gol atar","Takım golü",o=>o.h>0],["dg","Deplasman gol atar","Takım golü",o=>o.a>0],["e15","Ev sahibi 1,5 Üst","Takım golü",o=>o.h>1.5],["d15","Deplasman 1,5 Üst","Takım golü",o=>o.a>1.5],
+ ["eby","Ev sahibi iki yarıda da gol atar","Takım golü",o=>o.ih>0&&o.sh>0],["dby","Deplasman iki yarıda da gol atar","Takım golü",o=>o.ia>0&&o.sa>0],
+ ["ey1","Ev sahibi en çok 1. yarıda gol atar","Takım · gollü yarı",o=>o.ih>o.sh],["ey2","Ev sahibi en çok 2. yarıda gol atar","Takım · gollü yarı",o=>o.sh>o.ih],["eye","Ev sahibi iki yarıda eşit gol atar","Takım · gollü yarı",o=>o.ih===o.sh],
+ ["dy1","Deplasman en çok 1. yarıda gol atar","Takım · gollü yarı",o=>o.ia>o.sa],["dy2","Deplasman en çok 2. yarıda gol atar","Takım · gollü yarı",o=>o.sa>o.ia],["dye","Deplasman iki yarıda eşit gol atar","Takım · gollü yarı",o=>o.ia===o.sa],
  ["tg01","Toplam gol 0-1","Toplam gol",o=>o.tg<=1],["tg23","Toplam gol 2-3","Toplam gol",o=>o.tg>=2&&o.tg<=3],["tg45","Toplam gol 4-5","Toplam gol",o=>o.tg>=4&&o.tg<=5],["tg6","Toplam gol 6+","Toplam gol",o=>o.tg>=6],
  ["tek","Toplam gol tek","Tek / çift",o=>o.tg%2===1],["cift","Toplam gol çift","Tek / çift",o=>o.tg%2===0],
  ["1u25","MS 1 ve 2,5 Üst","Kombine",o=>o.ms==="1"&&o.tg>2.5],["2u25","MS 2 ve 2,5 Üst","Kombine",o=>o.ms==="2"&&o.tg>2.5],["kgu25","KG Var ve 2,5 Üst","Kombine",o=>o.h>0&&o.a>0&&o.tg>2.5],["1kg","MS 1 ve KG Var","Kombine",o=>o.ms==="1"&&o.h>0&&o.a>0],["2kg","MS 2 ve KG Var","Kombine",o=>o.ms==="2"&&o.h>0&&o.a>0]
@@ -8465,7 +8468,7 @@ const SI={
  reset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4v6h6"/><path d="M4.6 15a8 8 0 1 0 1.9-8.3L4 10"/></svg>',
  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>',
 };
-const APP_VER="133";
+const APP_VER="134";
 let toastT=null;
 function toast(msg){ const t=$("toast"); if(!t) return; t.innerHTML=`<span>${SI.check}</span>${esc(msg)}`; t.hidden=false; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.hidden=true,250) },1600) }
 async function saveCfg(patch,msg){ profile.cfg=Object.assign({},profile.cfg||{},patch); applyCfg(); try{ if(db) await db.doc("settings/profile").set(Object.assign({},profile)); toast(msg||"Kaydedildi") }catch(e){ toast("Kaydedilemedi, tekrar dene") } }
