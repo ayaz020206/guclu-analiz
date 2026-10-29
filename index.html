@@ -1197,6 +1197,11 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
 body{--acc:var(--hl2);--acc2:var(--hl)}
 body[data-page="tahmin"]{--acc:#239B6E;--acc2:#4FD19E}
 body[data-page="iyms"]{--acc:#A8325A;--acc2:#E0718F}
+.twseg{display:flex;flex-wrap:wrap} .twseg button{flex:1 1 auto}
+.twl{display:grid;gap:8px} .twr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--surface,var(--hdr))}
+.twh{min-width:0} .twh b{display:block;font-size:13.5px} .twh small{display:block;font-size:11px;color:var(--muted)}
+.twn{display:grid;justify-items:center;align-content:center;min-width:44px;padding:4px 8px;border-radius:10px;background:var(--hdr);border:1px solid var(--line)} .twn b{font-size:18px} .twn small{font-size:10px;color:var(--muted)}
+.twd{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)} .twd b{color:var(--ink)}
 body[data-page="gunkupon"]{--acc:#6E4FC4;--acc2:#A68CF2}
 body[data-page="alarm"]{--acc:#D0623F;--acc2:#F29A7C}
 body[data-page="analiz"],body[data-page="karne"],body[data-page="rapor"],body[data-page="lig"],body[data-page="ai"],body[data-page="tablo"]{--acc:#3E6FD6;--acc2:#86A8F2}
@@ -2767,6 +2772,7 @@ d.addEventListener("click",rm);setTimeout(rm,1400)})()</script>
       <option value="excel">Excel görünümü</option><option value="iyms">İY/MS (9 oran + sonuç)</option><option value="sade">Sade (MS · İY · A/Ü · KG)</option><option value="oran">Sadece oranlar</option><option value="tum">Tüm sütunlar</option><option value="ozel">Özel…</option>
     </select>
     <button class="tbtn" id="statbtn">İstatistik</button>
+    <button class="tbtn primary" id="twinbtn">Eşi olan maçlar</button>
   </div>
   <div id="tbar2" class="toolbar" style="justify-content:space-between">
     <div class="chips" id="chips"></div>
@@ -3717,6 +3723,42 @@ document.addEventListener("click",e=>{ const b=e.target.closest("[data-bets]"); 
 
 // ================= İSTATİSTİK (oran – sonuç) =================
 $("statbtn").addEventListener("click",openStats);
+$("twinbtn").addEventListener("click",openTwins);
+// v136: Oran Arşivi · "Eşi olan maçlar" — bültendeki oynanmamış maçları tarar; 9 İY/MS oranı küsuratsız birebir aynı oynanmış maçları bulur
+let twDay="", twMin=1, twSort="n", twIdx={s:""}, twBase={s:""};
+const twKey=m=>AGRP.iyms.every(k=>m[k]!=null)?AGRP.iyms.map(k=>trO(m[k])).join("-"):null;
+function twIndex(){ const s=PLAYED.length+"|"+matches.length; if(twIdx.s===s) return twIdx.G; const G=new Map(); for(const m of PLAYED){ if(!m.o) continue; const k=twKey(m); if(!k) continue; let a=G.get(k); if(!a){ a=[]; G.set(k,a) } a.push(m) } twIdx={s,G}; return G }
+function twBaseR(){ const s=PLAYED.length+"|"+matches.length; if(twBase.s===s) return twBase.B; const P=PLAYED.filter(m=>m.o&&twKey(m)), B={}; for(const k of marketKeys()){ if(/^x:(i?sc|imsc):/.test(k)) continue; let n=0,w=0; for(const m of P){ const r=win(k,m); if(r==null) continue; n++; if(r) w++ } if(n) B[k]=w/n } twBase={s,B}; return B }
+function twTop(L,f){ const c={}; let n=0; for(const m of L){ const v=f(m); if(v==null) continue; n++; c[v]=(c[v]||0)+1 } const t=Object.entries(c).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0]; return t?{v:t[0],c:t[1],n}:null }
+function twBets(L){ const B=twBaseR(), R=[]; for(const k in B){ if(B[k]>=0.85) continue; let n=0,w=0; for(const m of L){ const r=win(k,m); if(r==null) continue; n++; if(r) w++ } if(n&&w) R.push({k,n,w,p:w/n,lift:w/n-B[k]}) } R.sort((a,b)=>b.p-a.p||b.lift-a.lift||b.n-a.n); return R }
+function openTwins(){ const today=isoD(new Date()), G=twIndex();
+  const U=matches.filter(m=>!m.o&&!m.ert&&m.tarih>=today&&twKey(m));
+  const days=[...new Set(U.map(m=>m.tarih))].sort(); if(twDay&&!days.includes(twDay)) twDay="";
+  let L=U.filter(m=>!twDay||m.tarih===twDay).map(m=>{ const T=(G.get(twKey(m))||[]).filter(x=>x.id!==m.id); return {m,T} });
+  const tot=L.length, withT=L.filter(x=>x.T.length).length; L=L.filter(x=>x.T.length>=twMin);
+  for(const x of L){ x.sc=twTop(x.T,h=>h.o.h+"-"+h.o.a); x.im=twTop(x.T,h=>h.o.iy!=null?h.o.iyms.replace(/0/g,"X"):null); x.b=twBets(x.T).slice(0,2) }
+  const tm=x=>x.m.tarih+x.m.saat;
+  L.sort(twSort==="saat"?(a,b)=>tm(a).localeCompare(tm(b)):twSort==="bet"?(a,b)=>((b.b[0]&&b.b[0].p)||0)-((a.b[0]&&a.b[0].p)||0)||b.T.length-a.T.length:(a,b)=>b.T.length-a.T.length||tm(a).localeCompare(tm(b)));
+  const seg=(id,cur,O)=>`<div class="seg sseg twseg" id="${id}">${O.map(([v,l])=>`<button data-v="${v}" aria-pressed="${String(v)===String(cur)}">${l}</button>`).join("")}</div>`;
+  openPopup(`<div class="sh-head"><div><b>Eşi olan maçlar</b><small>Bültendeki ${tot} maçın ${withT} tanesinin arşivde eşi var</small></div><button class="xbtn" data-close aria-label="Kapat">✕</button></div>
+   <div class="sh-body"><p class="note" style="margin:0">Oynanmamış her maçın <b>9 İY/MS oranı</b> küsuratsız alınır (34,90 → 34). Arşivde 9'u da birebir aynı olan oynanmış maçlar <b>eşi</b> sayılır. Maça dokununca Oran Arşivi bu 9 oranla filtrelenir.</p>
+    <div><label class="lb" for="tw-day">Gün</label><select id="tw-day"><option value="">Tüm günler</option>${days.map(d=>`<option value="${d}" ${d===twDay?"selected":""}>${dshort(d)}</option>`).join("")}</select></div>
+    <div><label class="lb">En az eşi</label>${seg("tw-min",twMin,[[1,"1+"],[2,"2+"],[3,"3+"],[5,"5+"],[8,"8+"],[12,"12+"]])}</div>
+    <div><label class="lb">Sırala</label>${seg("tw-sort",twSort,[["n","Eşi çok"],["bet","Bahis gücü"],["saat","Saat"]])}</div>
+    <div class="twl">${L.length?L.slice(0,300).map(x=>`<button class="twr" data-tw="${esc(x.m.id)}"><span class="twh"><b>${esc(x.m.ev)} – ${esc(x.m.dep)}</b><small>${dshort(x.m.tarih)} ${esc(x.m.saat)} · ${esc(x.m.lig)}</small></span><span class="twn"><b>${x.T.length}</b><small>eşi</small></span>
+       <span class="twd"><span>Skor <b>${x.sc?esc(x.sc.v):"–"}</b> ${x.sc?`${x.sc.c}/${x.sc.n}`:""}</span><span>İY/MS <b>${x.im?esc(x.im.v):"–"}</b> ${x.im?`${x.im.c}/${x.im.n}`:""}</span>${x.b.map(b=>`<span>${esc(pickName(b.k))} <b>${b.w}/${b.n}</b></span>`).join("")}</span></button>`).join(""):'<div class="empty">Bu filtrelerle eşi olan maç yok.</div>'}</div>
+    ${L.length>300?`<p class="note">İlk 300 maç gösteriliyor. Gün seçerek daralt.</p>`:""}
+    <p class="note" style="margin:0">Sayılar: eşlerin kaçında geldiği (ör. 6/7). Çok yaygın bahisler (geneli %85 ve üstü, ör. 0,5 Üst) listelenmez. Eşi az olan maçta sonuç şansa açıktır; ${MIN_S} ve üstü eşi olanlar daha güvenilir.</p></div>`);
+  const P=$("popup");
+  const sd=$("tw-day"); if(sd) sd.addEventListener("change",()=>{ twDay=sd.value; openTwins() });
+  P.querySelectorAll("#tw-min button").forEach(b=>b.addEventListener("click",()=>{ twMin=+b.dataset.v; openTwins() }));
+  P.querySelectorAll("#tw-sort button").forEach(b=>b.addEventListener("click",()=>{ twSort=b.dataset.v; openTwins() }));
+  P.querySelectorAll("[data-tw]").forEach(b=>b.addEventListener("click",()=>{ const m=byId.get(b.dataset.tw); if(!m) return;
+    for(const k in F) delete F[k]; hitCols.clear(); sortBy=null; q=""; $("q").value="";
+    for(const k of AGRP.iyms){ F[k]={set:new Set([trO(m[k])])}; hitCols.add(k) }
+    refId=m.id; setStatus(""); closePopup(); limit=200; if(curTab!=="tablo") showTab("tablo"); else renderGrid(); $("gridwrap").scrollTop=0; window.scrollTo(0,0) }));
+}
+
 function openStats(){
   const played=currentList().filter(m=>m.o);
   const odds=COLDEFS.filter(c=>c.kind==="odd");
@@ -8471,7 +8513,7 @@ const SI={
  reset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4v6h6"/><path d="M4.6 15a8 8 0 1 0 1.9-8.3L4 10"/></svg>',
  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>',
 };
-const APP_VER="135";
+const APP_VER="136";
 let toastT=null;
 function toast(msg){ const t=$("toast"); if(!t) return; t.innerHTML=`<span>${SI.check}</span>${esc(msg)}`; t.hidden=false; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.hidden=true,250) },1600) }
 async function saveCfg(patch,msg){ profile.cfg=Object.assign({},profile.cfg||{},patch); applyCfg(); try{ if(db) await db.doc("settings/profile").set(Object.assign({},profile)); toast(msg||"Kaydedildi") }catch(e){ toast("Kaydedilemedi, tekrar dene") } }
