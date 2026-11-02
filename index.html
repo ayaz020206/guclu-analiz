@@ -6964,9 +6964,9 @@ function ttoLocate(img){ const W=img.width,H=img.height,D=img.data;
   const out=comps.filter(c=>{ const w=c.x1-c.x0+1,h=c.y1-c.y0+1; return w>=20&&h>=20&&h/w>0.35&&h/w<1.6&&c.n>0.55*w*h }).sort((a,b)=>b.n-a.n);
   return out.map(c=>({x0:Math.max(0,(c.x0+1)*s-s),y0:Math.max(0,(c.y0+1)*s-s),x1:Math.min(W,(c.x1)*s+s),y1:Math.min(H,(c.y1)*s+s)})) }
 function ttoBgMask(img){ if(img._bg) return img._bg; const D=img.data,n=img.width*img.height,M=new Uint8Array(n); for(let k=0,i=0;k<n;k++,i+=4){ const r=D[i],g=D[i+1],b=D[i+2];
-    if((r>=214&&r<=246&&g>=215&&g<=247&&b>=214&&b<=250&&(r>b?r-b:b-r)<=14)||(r>=191&&r<=227&&g>=217&&g<=249&&b>=187&&b<=227&&g-r>=12)) M[k]=1 } img._bg=M; return M }
+    if((r>=214&&r<=246&&g>=215&&g<=247&&b>=214&&b<=250&&(r>b?r-b:b-r)<=14)||(r>=191&&r<=227&&g>=217&&g<=249&&b>=187&&b<=227&&g-r>=12)||(r>=146&&r<=180&&g>=205&&g<=232&&b>=215&&b<=242&&b-r>=45&&g-r>=40)) M[k]=1 } img._bg=M; return M }
 function ttoBg(r,g,b){ // satır zeminleri: açık gri (230,231,232) ve açık yeşil (209,233,207)
-  return (Math.abs(r-230)<=16&&Math.abs(g-231)<=16&&Math.abs(b-232)<=18&&Math.abs(r-b)<=14) || (Math.abs(r-209)<=18&&Math.abs(g-233)<=16&&Math.abs(b-207)<=20&&g-r>=12) }
+  return (Math.abs(r-230)<=16&&Math.abs(g-231)<=16&&Math.abs(b-232)<=18&&Math.abs(r-b)<=14) || (Math.abs(r-209)<=18&&Math.abs(g-233)<=16&&Math.abs(b-207)<=20&&g-r>=12) || (Math.abs(r-162)<=16&&Math.abs(g-219)<=14&&Math.abs(b-230)<=14&&b-r>=45) }
 const ttoLum=(D,i)=>0.299*D[i]+0.587*D[i+1]+0.114*D[i+2];
 // bir bölgedeki mürekkep bileşenleri (dark=true: koyu yazı, false: açık yazı)
 function ttoComps(img,x0,y0,x1,y1,dark){ const W=img.width,D=img.data, w=x1-x0,h=y1-y0, M=new Uint8Array(w*h);
@@ -7029,8 +7029,8 @@ function ttoTable(img,box){ const W=img.width,H=img.height,D=img.data; const bw=
       const first=Math.min(...bands.map(b=>b.y0)), last=Math.max(...bands.map(b=>b.y1)); const k0=Math.round((first-a)/P), k1=Math.round((last-med-a)/P);
       if(P>med*0.9&&P<med*1.6&&k1-k0>=0&&k1-k0<40){ const nb=[]; for(let k=k0;k<=k1;k++) nb.push({y0:Math.round(a+k*P),y1:Math.round(a+k*P+med)}); bands=nb } } }
   // başlık: ilk satırın hemen üstündeki yeşil bant
-  let head=null; if(bands.length){ const t=bands[0].y0; let y=t-1, top=null, bot=null, miss=0; const isG=(r,g,b)=>g>120&&g-r>70&&g-b>30;
-    for(;y>=Math.max(0,t-3*med);y--){ let n=0,c=0; for(let x=nm[0];x<=nm[1];x+=3){ const i=(y*W+x)*4; c++; if(isG(D[i],D[i+1],D[i+2])) n++ } const f=n/c; if(f>0.5){ if(bot==null) bot=y; top=y; miss=0 } else if(bot!=null&&++miss>2) break }
+  let head=null; if(bands.length){ const t=bands[0].y0; let y=t-1, top=null, bot=null, miss=0; const isG=(r,g,b)=>g>120&&g-r>70&&(g-b>30||(b>130&&Math.abs(g-b)<=30));
+    for(;y>=Math.max(0,t-3*med);y--){ let n=0,c=0; for(let x=nm[0];x<=nm[1];x+=3){ const i=(y*W+x)*4; c++; if(isG(D[i],D[i+1],D[i+2])) n++ } const f=n/c; if(f>0.3){ if(bot==null) bot=y; top=y; miss=0 } else if(bot!=null&&++miss>2) break }
     if(top!=null&&bot-top>=0.5*med) head={y0:top,y1:bot+1,x0:num?num[0]:nm[0],x1:nm[1]} }
   return {nm,num,bands,head,med} }
 // tablodan satır glifleri: [{no:[glif..], nm:[glif..], R, L}] + başlık
@@ -7074,6 +7074,7 @@ function ttoParseHead(t){ if(!t) return null; let s=t.replace(/(\d)\s+(?=\d)/g,"
   let bas=null,bit=null,yil=null,hafta=null; const ym=s.match(/20\d\d/); if(ym) yil=+ym[0];
   if(mon.length>=2){ const d1=num(mon[0].i-1), d2=num(mon[1].i-1); if(yil&&d1>=1&&d1<=31&&d2>=1&&d2<=31){ const y1=mon[0].m>mon[1].m?yil-1:yil; const p=v=>String(v).padStart(2,"0"); bas=`${y1}-${p(mon[0].m)}-${p(d1)}`; bit=`${yil}-${p(mon[1].m)}-${p(d2)}` } }
   const hm=s.match(/(\d{1,2})\s*\.?\s*H\s*A?\s*F?\s*T?\s*A/); if(hm) hafta=+hm[1];
+  if(hafta==null){ const om=s.match(/(\d{1,2})\s*\.?\s*OYUN/); if(om) hafta=+om[1] }
   return {bas,bit,hafta,raw:t} }
 function ttoSplitTeams(t){ t=t.replace(/\s+/g," ").trim(); let k=t.indexOf(" - "); if(k<0){ const ms=[...t.matchAll(/\s-|-\s/g)]; if(ms.length) k=ms[0].index+(t[ms[0].index]===" "?0:0); else { const h=t.indexOf("-"); k=h } }
   if(k<0) return null; let a=t.slice(0,k).trim(), b=t.slice(k).replace(/^\s*-\s*/,"").trim(); a=a.replace(/-$/,"").trim(); if(!a||!b) return null; return [a,b] }
@@ -7500,7 +7501,16 @@ async function ttExactHits(rows,S,kolons,onp){ const P=rows.map(r=>r.A?r.A.p:[1/
   const L=Vs.length, K=kolons.length, KD=new Int8Array(K*L); kolons.forEach((k,c)=>Vs.forEach((i,q)=>{ KD[c*L+q]=k[i] }));
   let total=1; for(const o of st) total*=o.length;
   const sd=new Float64Array(L+1); const y=new Int8Array(L), idx=new Int32Array(L); let pr=new Float64Array(L+1); pr[0]=1;
-  const work=total*K; if(work>4e8) throw new Error(`hesap çok büyük (${total.toLocaleString("tr-TR")} sonuç durumu × ${K.toLocaleString("tr-TR")} kolon); daha küçük bir sistem seç`);
+  const work=total*K;
+  // v139: büyük sistemde (kesin sayım çok uzun) — 15 ihtimali yine KESİN (kolon olasılıkları toplamı), 14+/13+/12+ sabit tohumlu sanal haftalarla TAHMİN edilir; kupon artık reddedilmez
+  if(work>4e8){ const bAll=bd[bd.length-1]; let p15s=0; const seen=new Set(); for(let c=0;c<K;c++){ let key="", p=1; for(let q=0;q<L;q++){ const j=KD[c*L+q]; key+=j; const o=st[q].find(x=>x.j===j); p*=o?o.p:0 } if(!seen.has(key)){ seen.add(key); p15s+=p } }
+    const T=Math.max(4000,Math.min(60000,Math.floor(3e8/Math.max(1,K*L)))); let seed=20261029; const rnd=()=>(seed=seed*16807%2147483647)/2147483647;
+    const cum=st.map(o=>{ let a=0; return o.map(x=>(a+=x.p)) }); const sdm=new Float64Array(L+1); let tA=performance.now();
+    for(let t=0;t<T;t++){ for(let q=0;q<L;q++){ const u=rnd()*cum[q][cum[q].length-1]; let k=0; while(k<cum[q].length-1&&u>cum[q][k]) k++; y[q]=st[q][k].j } let best=0; for(let c=0;c<K;c++){ let h=0; const b=c*L; for(let q=0;q<L;q++) if(KD[b+q]===y[q]) h++; if(h>best){ best=h; if(best===L) break } } sdm[best]+=1/T;
+      if((t&63)===0&&performance.now()-tA>40){ if(onp) onp(t/T); await new Promise(z=>setTimeout(z,0)); tA=performance.now() } }
+    sdm[L]=p15s; { let rest=0; for(let j=0;j<L;j++) rest+=sdm[j]; const f=rest>0?(1-p15s)/rest:0; for(let j=0;j<L;j++) sdm[j]*=f }
+    const dist=new Array(16).fill(0); bd.forEach((a,i)=>{ for(let j=0;j<=L;j++) dist[i+j]+=a*sdm[j] }); const ge=x=>dist.slice(x).reduce((a,b)=>a+b,0);
+    void bAll; return {p15:ge(15),p14:ge(14),p13:ge(13),p12:ge(12),e15:ge(15),e14:ge(14)-ge(15),e13:ge(13)-ge(14),e12:ge(12)-ge(13),states:total,approx:T,noOdds:rows.filter(r=>!r.A).length} }
   let done=0, t0=performance.now();
   // ardışık sayaç ile tüm durumlar
   for(let q=0;q<L;q++){ y[q]=st[q][0].j }
@@ -7636,6 +7646,7 @@ function ttGarHTML(W,S,rows,cols){ const key=totoCur+"|"+ttPlan+"|"+S.map(s=>s.j
       <tr><td style="text-align:left">Tam sistem (${N(cols)} kolon)</td>${Ffull.map(v=>`<td>${ttPct(v)}</td>`).join("")}</tr>
       <tr><td style="text-align:left"><b>Yüzdesel (${N(G.kol.length)} kolon)</b></td>${[H.p15,H.p14,H.p13,H.p12].map(v=>`<td><b>${ttPct(v)}</b></td>`).join("")}</tr>
       ${G.cmp?`<tr><td style="text-align:left">Aynı kolonla garantili (${N(G.cmp.n)} kolon)</td>${[G.cmp.p15,G.cmp.p14,G.cmp.p13,G.cmp.p12].map(v=>`<td>${ttPct(v)}</td>`).join("")}</tr>`:""}</tbody></table></div></div>
+     ${H.approx?`<p class="note" style="margin:6px 0">Bu boyutta 15 ihtimali kesin, 14 / 13 / 12 ihtimalleri ${N(H.approx)} sanal haftayla tahmindir.</p>`:""}
      <p class="note" style="margin:6px 0">Hesabın dayanağı: her maçın olasılığı bülten oranına benzeyen arşiv maçlarının gerçek sonuçlarından gelir; maçlar birbirinden bağımsız varsayılır. Bu bir olasılık hesabıdır; kazanç garantisi değildir. Karne sekmesinde haftalar biriktikçe gerçek sonuçlarla karşılaştırılır.</p>`:`
      <details class="h15-det"><summary>Garanti şartı ve olasılık hesabı</summary>
      <div class="ttgk"><b>Garanti şartı</b><span>${nb} bankonun hepsi tutar ve diğer ${nc+nk} maçın sonucu seçtiğin kutuların içinde kalırsa, kolonlardan en az biri <b>en az ${G.g} doğru</b> yapar.</span>
@@ -7645,7 +7656,7 @@ function ttGarHTML(W,S,rows,cols){ const key=totoCur+"|"+ttPlan+"|"+S.map(s=>s.j
       <tr><td style="text-align:left">Tam sistem (${N(cols)} kolon)</td>${Ffull.map(v=>`<td>${ttPct(v)}</td>`).join("")}</tr>
       <tr><td style="text-align:left"><b>${G.g} garantili (${N(G.kol.length)} kolon)</b></td>${[H.p15,H.p14,H.p13,H.p12].map(v=>`<td><b>${ttPct(v)}</b></td>`).join("")}</tr>
       <tr><td style="text-align:left">Tam olarak (garantili)</td><td>${ttPct(H.e15)}</td><td>${ttPct(H.e14)} <small>(14)</small></td><td>${ttPct(H.e13)} <small>(13)</small></td><td>${ttPct(H.e12)} <small>(12)</small></td></tr></tbody></table></div></div>`}
-     ${noOdds?"":`<p class="note" style="margin:6px 0"><b>Hesabın dayanağı:</b> her maçın olasılığı, bülten oranına benzeyen arşiv maçlarının gerçek sonuçlarından gelir; maçlar birbirinden bağımsız varsayılır. Sistem maçlarının <b>${N(H.states)}</b> sonuç durumunun her biri için en iyi kolon bulunup olasılıklar toplandı (simülasyon değil, kesin hesap). Kolonlar arasındaki ortaklık bu yüzden hesaba katılmıştır.${H.noOdds?` ${H.noOdds} maçın oranı olmadığı için o maçlarda 1/X/2 eşit olasılıklı alındı.`:""} Bu bir olasılık hesabıdır; geçmiş başarı oranı değildir ve kazanç garantisi değildir.</p>`}
+     ${noOdds?"":`<p class="note" style="margin:6px 0"><b>Hesabın dayanağı:</b> her maçın olasılığı, bülten oranına benzeyen arşiv maçlarının gerçek sonuçlarından gelir; maçlar birbirinden bağımsız varsayılır. ${H.approx?`Sistem çok büyük (${N(H.states)} sonuç durumu × ${N(G.kol.length)} kolon) olduğu için: 15 ihtimali kesin hesaplandı; 14 / 13 / 12 ihtimalleri ${N(H.approx)} sanal haftayla <b>tahmin</b> edildi (yaklaşık değer, her seferinde aynı çıkar).`:`Sistem maçlarının <b>${N(H.states)}</b> sonuç durumunun her biri için en iyi kolon bulunup olasılıklar toplandı (simülasyon değil, kesin hesap).`} Kolonlar arasındaki ortaklık bu yüzden hesaba katılmıştır.${H.noOdds?` ${H.noOdds} maçın oranı olmadığı için o maçlarda 1/X/2 eşit olasılıklı alındı.`:""} Bu bir olasılık hesabıdır; geçmiş başarı oranı değildir ve kazanç garantisi değildir.</p>`}
      </details>`}` }
   else h+=`<p class="note" style="margin:8px 0 0">${noOdds?`${noOdds} maçın bülten oranı yok; kolonlar kurulur ama ihtimal gösterilmez. `:""}Bir garanti seviyesi seç; kolonlar, tutar ve 14 / 13 / 12 doğru olasılıkları hesaplanır.</p>`;
   return h+`</div></div>` }
@@ -8548,7 +8559,7 @@ const SI={
  reset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4v6h6"/><path d="M4.6 15a8 8 0 1 0 1.9-8.3L4 10"/></svg>',
  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>',
 };
-const APP_VER="138";
+const APP_VER="140";
 let toastT=null;
 function toast(msg){ const t=$("toast"); if(!t) return; t.innerHTML=`<span>${SI.check}</span>${esc(msg)}`; t.hidden=false; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.hidden=true,250) },1600) }
 async function saveCfg(patch,msg){ profile.cfg=Object.assign({},profile.cfg||{},patch); applyCfg(); try{ if(db) await db.doc("settings/profile").set(Object.assign({},profile)); toast(msg||"Kaydedildi") }catch(e){ toast("Kaydedilemedi, tekrar dene") } }
