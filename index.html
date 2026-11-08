@@ -2819,6 +2819,7 @@ d.addEventListener("click",rm);setTimeout(rm,1400)})()</script>
 <section id="p-terminal" class="panel" hidden><div id="tm-out"></div></section>
 <section id="p-perf" class="panel" hidden><div id="pf-out"></div></section>
 <section id="p-kalite" class="panel" hidden><div id="kl-out"></div></section>
+<section id="p-skorus" class="panel" hidden><div id="sk-out"></div></section>
 <section id="p-kilit" class="panel" hidden><div id="kil-out"></div></section>
 <section id="p-asistan" class="panel" hidden><div id="as-out"></div></section>
 <section id="p-tahmin" class="panel" hidden>
@@ -3150,6 +3151,7 @@ function showTab(t,fromNav){
   if(t==="terminal") renderTerminal();
   if(t==="perf") renderPerf();
   if(t==="kalite") renderKalite();
+  if(t==="skorus") renderSkorus();
   if(t==="kilit") renderKilit();
   if(t==="asistan") renderAsistan();
   if(t==="toto") renderToto();
@@ -4691,8 +4693,8 @@ try{applyTheme(localStorage.getItem("oa_theme")||"")}catch(e){applyTheme("")}
 try{ const u=JSON.parse(localStorage.getItem("oa_ui")||"{}"); if(u.font) document.documentElement.dataset.font=u.font; if(u.anim===false) document.documentElement.classList.add("noanim") }catch(e){}
 
 // ================= SAYFA BAŞLIKLARI =================
-const PAGES={kapanis:"Açılış – Kapanış",y70:"%70 Üzeri",takvim:"Veri Takvimi",home:"Kontrol Paneli",tahmin:"Tahmin Merkezi",alarm:"Eşleşme Alarmı",analiz:"Oran Eşleştirme",tablo:"Oran Arşivi",kupon:"Kuponlarım",rapor:"Performans Raporu",sonuc:"Skor Merkezi",veri:"Bülten Yükleme",profil:"Hesabım",ayarlar:"Ayarlar",gunkupon:"Günün Kuponları",iyms:"İY/MS Merkezi",toto:"Spor Toto",loto:"Sayısal Oyunlar",msonuc:"Maç Sonuçları",terminal:"Oran Hareketi",perf:"Performans Merkezi",kalite:"Veri Kalitesi",kilit:"Paket gerekli",asistan:"Yapay Zekâ Asistanı"};
-const SUBS={asistan:"Kayıtlı maç, oran ve sonuçlar üzerine Türkçe sohbet · internetsiz de çalışabilir",kilit:"Bu bölüm üyelik paketine bağlı",terminal:"Açılış oranı ile en son çekilen oran: ihtimal kaç puan, adil oran yüzde kaç değişti",perf:"Gerçek kayıtların isabeti, Brier ve log loss; ayrıca geriye dönük test",kalite:"Eksik skor, şüpheli skor, çıkarılan oran ve mükerrer kayıt denetimi",kapanis:"Her maçın bülten açılış oranı ile maç öncesi son oranı (Nesine, saatte bir) ve sonucu; benzer hareketli maçlar ve karne",toto:"A Güçlü Analiz · B Sürpriz · C İdeal · D Rastgele kolonları, formüllü özel sistem ve kupon performansı",msonuc:"Kayıtlı maç sonuçları gün gün: ilk yarı ve maç sonu skoru",loto:"Çılgın Sayısal, Süper Loto, Şans Topu, On Numara: sonuç yükleme, analiz, test ve istediğin sayıda kolon",gunkupon:"Bahis türüne göre ayrı kuponlar: KG Var, Üst, Alt, yarı KG, İY/MS, İY sonucu, iki yarıda gol, gol aralığı",y70:"Bülten oranına göre ihtimali %70'i geçen bahisler",iyms:"İY/MS oranı olan maçlar: her seçeneğin gerçek geçmişi, öne çıkan İY/MS ve skor senaryosu",ayarlar:"Uygulamayla ilgili her şeyi buradan değiştir",takvim:"Hangi günün bülteni ve skorları tam, hangisi eksik — bir bakışta",tahmin:"Gol odaklı 13 bahis türünde oranlardan ve gerçek sonuçlardan hesaplanan tahminler",alarm:"Arşivle birebir, ±0,01 ya da ±0,02 aynı açılış oranına sahip oynanmamış maçlar",analiz:"Oran grubunu, benzerliği ve eşiği sen seç; geçmiş maçlarla karşılaştır",karne:"Hangi ayar geçmişte gerçekten kazandırdı? Geleceği bilmeden yapılan test",ai:"Arşive dayalı maç yorumu · yalnızca maç soruları",kupon:"Kaydettiğin kuponlar, isabet ve kâr/zarar",rapor:"Günlük ve haftalık performans özeti",lig:"Liglere göre bahis türlerinin gerçekleşme oranları",rejim:"iddaa'nın kâr payı ve oranların davranışı ay ay değişiyor mu?",sonuc:"Mackolik PDF ile skor girişi ve otomatik skor denetimi",veri:"iddaa bülten PDF'ini yükle, yüklü bültenleri yönet",profil:"Profil fotoğrafı, hesap bilgileri ve şifre"};
+const PAGES={kapanis:"Açılış – Kapanış",y70:"%70 Üzeri",takvim:"Veri Takvimi",home:"Kontrol Paneli",tahmin:"Tahmin Merkezi",alarm:"Eşleşme Alarmı",analiz:"Oran Eşleştirme",tablo:"Oran Arşivi",kupon:"Kuponlarım",rapor:"Performans Raporu",sonuc:"Skor Merkezi",veri:"Bülten Yükleme",profil:"Hesabım",ayarlar:"Ayarlar",gunkupon:"Günün Kuponları",iyms:"İY/MS Merkezi",toto:"Spor Toto",loto:"Sayısal Oyunlar",msonuc:"Maç Sonuçları",terminal:"Oran Hareketi",perf:"Performans Merkezi",kalite:"Veri Kalitesi",skorus:"Skor Oranı Eşleşmesi",kilit:"Paket gerekli",asistan:"Yapay Zekâ Asistanı"};
+const SUBS={skorus:"2-1, 2-2, 3-2, 3-3 oranı birden aynı olan eski maçlar ve nasıl bittikleri",asistan:"Kayıtlı maç, oran ve sonuçlar üzerine Türkçe sohbet · internetsiz de çalışabilir",kilit:"Bu bölüm üyelik paketine bağlı",terminal:"Açılış oranı ile en son çekilen oran: ihtimal kaç puan, adil oran yüzde kaç değişti",perf:"Gerçek kayıtların isabeti, Brier ve log loss; ayrıca geriye dönük test",kalite:"Eksik skor, şüpheli skor, çıkarılan oran ve mükerrer kayıt denetimi",kapanis:"Her maçın bülten açılış oranı ile maç öncesi son oranı (Nesine, saatte bir) ve sonucu; benzer hareketli maçlar ve karne",toto:"A Güçlü Analiz · B Sürpriz · C İdeal · D Rastgele kolonları, formüllü özel sistem ve kupon performansı",msonuc:"Kayıtlı maç sonuçları gün gün: ilk yarı ve maç sonu skoru",loto:"Çılgın Sayısal, Süper Loto, Şans Topu, On Numara: sonuç yükleme, analiz, test ve istediğin sayıda kolon",gunkupon:"Bahis türüne göre ayrı kuponlar: KG Var, Üst, Alt, yarı KG, İY/MS, İY sonucu, iki yarıda gol, gol aralığı",y70:"Bülten oranına göre ihtimali %70'i geçen bahisler",iyms:"İY/MS oranı olan maçlar: her seçeneğin gerçek geçmişi, öne çıkan İY/MS ve skor senaryosu",ayarlar:"Uygulamayla ilgili her şeyi buradan değiştir",takvim:"Hangi günün bülteni ve skorları tam, hangisi eksik — bir bakışta",tahmin:"Gol odaklı 13 bahis türünde oranlardan ve gerçek sonuçlardan hesaplanan tahminler",alarm:"Arşivle birebir, ±0,01 ya da ±0,02 aynı açılış oranına sahip oynanmamış maçlar",analiz:"Oran grubunu, benzerliği ve eşiği sen seç; geçmiş maçlarla karşılaştır",karne:"Hangi ayar geçmişte gerçekten kazandırdı? Geleceği bilmeden yapılan test",ai:"Arşive dayalı maç yorumu · yalnızca maç soruları",kupon:"Kaydettiğin kuponlar, isabet ve kâr/zarar",rapor:"Günlük ve haftalık performans özeti",lig:"Liglere göre bahis türlerinin gerçekleşme oranları",rejim:"iddaa'nın kâr payı ve oranların davranışı ay ay değişiyor mu?",sonuc:"Mackolik PDF ile skor girişi ve otomatik skor denetimi",veri:"iddaa bülten PDF'ini yükle, yüklü bültenleri yönet",profil:"Profil fotoğrafı, hesap bilgileri ve şifre"};
 let curTab="home";
 $("back").addEventListener("click",()=>{ if(tabHist.length&&!navBusy){ try{ history.back() }catch(e){ showTab("home") } } else showTab("home") });
 $("avatar").addEventListener("click",()=>showTab("profil"));
@@ -4742,7 +4744,7 @@ function countUp(el){ const to=+el.dataset.count, pre=el.dataset.pre||"", suf=el
 const gaAdmin=()=>!window.GA_SITE||GA_SITE.admin;
 const GA_MENU=()=>[
   ["Genel",[["home","Ana Sayfa"],["asistan","Yapay Zekâ Asistanı"],["tahmin","Tahmin Merkezi"],["iyms","İY/MS Merkezi"],["y70","%70 Üzeri"],["gunkupon","Günün Kuponları"],["alarm","Eşleşme Alarmı"]]],
-  ["Oranlar",[["tablo","Oran Arşivi"],["terminal","Oran Hareketi"],["kapanis","Açılış – Kapanış"],["analiz","Oran Eşleştirme"]]],
+  ["Oranlar",[["tablo","Oran Arşivi"],["terminal","Oran Hareketi"],["kapanis","Açılış – Kapanış"],["analiz","Oran Eşleştirme"],["skorus","Skor Oranı Eşleşmesi"]]],
   ["Kupon ve sonuç",[["toto","Spor Toto"],["kupon","Kuponlarım"],["msonuc","Maç Sonuçları"],["perf","Performans Merkezi"]]],
   ["Hesap",[["profil","Profil"],["ayarlar","Ayarlar"]]],
   ...(gaAdmin()?[["Yönetici",[["veri","Bülten Yükleme"],["sonuc","Skor Girişi"],["takvim","Veri Takvimi"],["kalite","Veri Kalitesi"],["loto","Sayısal Oyunlar"]].concat(window.GA_SITE?[["__yonetim","Üye Yönetimi"]]:[])]]:[])];
@@ -4923,7 +4925,7 @@ async function klCleanRun(cut){ const plan=klCleanPlan(cut); if(!plan.n){ toast(
   toast(bad?"Bazı belgeler yazılamadı":"Temizlik tamamlandı") }
 
 // v122: üyelik paketleri (sitede). Claude uygulamasında ve yöneticide her şey açık.
-const GA_IDDAA=new Set(["tahmin","y70","gunkupon","kapanis","iyms","alarm","kupon","analiz","tablo","terminal","perf","msonuc"]);
+const GA_IDDAA=new Set(["tahmin","y70","gunkupon","kapanis","iyms","alarm","kupon","analiz","skorus","tablo","terminal","perf","msonuc"]);
 let gaLockFor="";
 function gaPk(){ try{ if(window.GA_SITE&&GA_SITE.pk) return GA_SITE.pk }catch(e){} return {iddaa:true,toto:true} }
 function gaNeed(t){ return GA_IDDAA.has(t)&&!gaPk().iddaa }
@@ -5212,7 +5214,7 @@ function renderHome(){
    <button class="gt gt-w" data-go="iyms"><span class="ic">${I("iyms")}</span><b>İY/MS Merkezi</b><small>${imN} maçta İY/MS oranı</small></button>
    <button class="gt" data-go="alarm"><span class="ic">${I("alarm")}</span><b>Eşleşme Alarmı</b><small>${AI.length} alarm${nNew?` · ${nNew} yeni`:""}</small>${nNew?`<span class="bdg">${nNew} yeni</span>`:""}</button>
    <button class="gt" data-go="kupon"><span class="ic">${I("kupon")}</span><b>Kuponlarım</b><small>${open} bekleyen${dn?` · %${Math.round(dw/dn*100)} kupon isabeti`:""}</small></button>`;
-  $("h-anal").innerHTML=[["asistan","Yapay Zekâ Asistanı"],["analiz","Oran Eşleştirme"],["tablo","Oran Arşivi"],["terminal","Oran Hareketi"],["toto","Spor Toto"],["msonuc","Maç Sonuçları"],["perf","Performans Merkezi"]].concat(gaAdmin()?[["kalite","Veri Kalitesi"],["loto","Sayısal Oyunlar"]]:[]).map(([k,n])=>`<button class="gm" data-go="${k}"><span class="ic">${I(k)}</span><b>${n}</b></button>`).join("");
+  $("h-anal").innerHTML=[["asistan","Yapay Zekâ Asistanı"],["analiz","Oran Eşleştirme"],["skorus","Skor Oranı Eşleşmesi"],["tablo","Oran Arşivi"],["terminal","Oran Hareketi"],["toto","Spor Toto"],["msonuc","Maç Sonuçları"],["perf","Performans Merkezi"]].concat(gaAdmin()?[["kalite","Veri Kalitesi"],["loto","Sayısal Oyunlar"]]:[]).map(([k,n])=>`<button class="gm" data-go="${k}"><span class="ic">${I(k)}</span><b>${n}</b></button>`).join("");
   $("h-data").innerHTML=`<button class="gr" data-go="veri"><span class="ic">${I("veri")}</span><b>Bülten</b></button><button class="gr" data-go="sonuc"><span class="ic">${I("sonuc")}</span><b>Skor</b>${miss?`<em>${miss}</em>`:""}</button><button class="gr" data-go="takvim"><span class="ic">${I("takvim")}</span><b>Takvim</b></button><button class="gr" data-go="ayarlar"><span class="ic">${I("ayarlar")}</span><b>Ayarlar</b></button>`;
   renderHomeCards();
   { const hs=$("h-show"); hs.innerHTML=gaShowHTML(); gaShowBind(); if(!totoLoaded) loadToto().then(()=>{ const h2=$("h-show"); if(h2&&!$("p-home").hidden&&totoLoaded){ h2.innerHTML=gaShowHTML(); gaShowBind() } }).catch(()=>{}) }
@@ -8425,7 +8427,7 @@ function monthBreakHTML(list,ownFn,rowsDef,betTop){
     <p class="note" style="margin:8px 0 0"><b>Fark</b> sütunu: bir ayın yüzdesi öteki aylardan istatistiksel olarak ayrışıyorsa (%99 güven, her iki tarafta en az 8 maç) <b>gerçek değişim</b> yazar; yoksa <b>şans içinde</b>. ${ks.length<2?"Şu an arşivde bu oran için yalnız bir ay var; yeni aylar eklendikçe sütunlar çoğalır.":"Küçük örnekte %60'tan %40'a düşmek bile çoğu zaman şanstır."}</p>` }
 const RJ_KEYS=[["iyms11","İY/MS 1/1"],["iyms10","İY/MS 1/X"],["iyms12","İY/MS 1/2"],["iyms01","İY/MS X/1"],["iyms00","İY/MS X/X"],["iyms02","İY/MS X/2"],["iyms21","İY/MS 2/1"],["iyms20","İY/MS 2/X"],["iyms22","İY/MS 2/2"],["ms1","MS 1"],["msx","MS X"],["ms2","MS 2"],["iy1","İY 1"],["iyx","İY X"],["iy2","İY 2"],["au25_alt","2,5 Alt"],["au25_ust","2,5 Üst"],["au35_alt","3,5 Alt"],["au35_ust","3,5 Üst"],["kg_var","KG Var"],["kg_yok","KG Yok"]];
 // ================= YAN MENÜ (geniş ekran) =================
-const SIDE_NAV=[["Günlük",["home","y70","tahmin","gunkupon","kapanis","iyms","alarm","kupon"]],["Analiz",["analiz","tablo","terminal","perf","msonuc"]],["Oyunlar",["toto","loto"]],["Veri",["veri","sonuc","takvim","kalite"]],["Hesap",["ayarlar","profil"]]];
+const SIDE_NAV=[["Günlük",["home","y70","tahmin","gunkupon","kapanis","iyms","alarm","kupon"]],["Analiz",["analiz","skorus","tablo","terminal","perf","msonuc"]],["Oyunlar",["toto","loto"]],["Veri",["veri","sonuc","takvim","kalite"]],["Hesap",["ayarlar","profil"]]];
 function renderSide(){ const nav=$("sd-nav"); if(!nav) return; const nN=profLoaded?newAlarms().length:0;
   const ic=k=>k==="home"?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>':TILE_ICON[k]||"";
   nav.innerHTML=SIDE_NAV.map(([g,ks])=>`<div class="sd-g">${g}</div>${ks.map(k=>`<button class="sd-i${curTab===k?" on":""}" data-side="${k}">${ic(k)}<span>${esc(PAGES[k])}</span>${k==="alarm"&&nN?`<em>${nN}</em>`:""}</button>`).join("")}`).join("");
@@ -8537,7 +8539,7 @@ document.querySelectorAll("#bnav [data-nav]").forEach(b=>b.addEventListener("cli
   if(t==="more"){ openMore(); return }
   closePopup(); showTab(t) }));
 function openMore(){
-  const L=[["y70","%70 Üzeri"],["gunkupon","Günün Kuponları"],["kapanis","Açılış – Kapanış"],["iyms","İY/MS Merkezi"],["alarm","Eşleşme Alarmı"],["kupon","Kupon Defteri"],["analiz","Oran Eşleştirme"],["tablo","Oran Arşivi"],["toto","Spor Toto"],["loto","Sayısal Oyunlar"],["sonuc","Skor Merkezi"],["takvim","Veri Takvimi"],["veri","Bülten Yükleme"],["ayarlar","Ayarlar"],["profil","Hesabım"]];
+  const L=[["y70","%70 Üzeri"],["gunkupon","Günün Kuponları"],["kapanis","Açılış – Kapanış"],["iyms","İY/MS Merkezi"],["alarm","Eşleşme Alarmı"],["kupon","Kupon Defteri"],["analiz","Oran Eşleştirme"],["skorus","Skor Oranı Eşleşmesi"],["tablo","Oran Arşivi"],["toto","Spor Toto"],["loto","Sayısal Oyunlar"],["sonuc","Skor Merkezi"],["takvim","Veri Takvimi"],["veri","Bülten Yükleme"],["ayarlar","Ayarlar"],["profil","Hesabım"]];
   openPopup(`<div class="sh-head"><div><b>Tüm bölümler</b><small>Güçlü Analiz</small></div><button class="xbtn" data-close aria-label="Kapat">✕</button></div><div class="sh-body"><div class="moregrid">${L.map(([k,n])=>`<button class="gm" data-mgo="${k}"><span class="ic">${TILE_ICON[k]}</span><b>${n}</b></button>`).join("")}</div></div>`);
   document.querySelectorAll("[data-mgo]").forEach(b=>b.addEventListener("click",()=>{ closePopup(); showTab(b.dataset.mgo) }));
 }
@@ -8572,7 +8574,63 @@ const SI={
  reset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4v6h6"/><path d="M4.6 15a8 8 0 1 0 1.9-8.3L4 10"/></svg>',
  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>',
 };
-const APP_VER="141";
+// ================= v142 · SKOR ORANI EŞLEŞMESİ (2-1 · 2-2 · 3-2 · 3-3 oranı birden) =================
+// Bültende bu skor oranları yok. MS, 2,5 A/Ü ve KG oranlarından Poisson modeliyle her skorun adil oranı hesaplanır, Nesine'ye yaklaştırmak için
+// 45 gerçek maçla bulunan katsayılarla (0,70 · 0,63 · 0,67 · 0,61) çarpılır, küsurat atılır. Dört oranı birden aynı olan eski maçlar "eş" sayılır.
+const SK_S=["2-1","2-2","3-2","3-3"], SK_K=[0.70,0.63,0.67,0.61];
+let SK={use33:false,n:-1,tup:new Map(),busy:false,done:0,tot:0,mode:0,sel:"",vals:null,run:0};
+const skOk=m=>{ for(const k of ["ms1","msx","ms2","au25_alt","au25_ust","kg_var","kg_yok","iy1","iyx","iy2"]){ const v=m[k]; if(v!=null&&(v>30||v<1.01)) return false } return m.ms1!=null&&m.msx!=null&&m.ms2!=null };
+function skCalc(m){ if(!skOk(m)) return null; const r=demargin([m.ms1,m.msx,m.ms2]); if(!r) return null;
+  const au=demargin([m.au25_alt,m.au25_ust]), kg=demargin([m.kg_var,m.kg_yok]);
+  const f=fitLambdas({r,ov:au?au[1]:null,kg:kg?kg[0]:null},8,0.1,3.6,0.05), pa=pmf(f.a,6), pb=pmf(f.b,6);
+  const t=SK_S.map((s,i)=>{ const [a,b]=s.split("-").map(Number); const p=pa[a]*pb[b]; return p>0?Math.floor(SK_K[i]/p):999 }); return t }
+function skTol(a,b,mode){ if(!mode) return a===b; const d=Math.abs(a-b); return d<=(b<20?1:b<40?2:4) }
+function skClose(t,u,mode){ for(let i=0;i<(SK.use33?4:3);i++) if(!skTol(t[i],u[i],mode)) return false; return true }
+function skStart(){
+  if(SK.busy) return; const key=matches.length+"|"+PLAYED.length; if(SK.n===key) return;
+  SK.busy=true; SK.run++; const run=SK.run; SK.tup=new Map(); let cache={}; try{ const c=JSON.parse(localStorage.getItem("sk142")||"{}"); if(c&&c.v===1&&c.d) cache=c.d }catch(e){}
+  const L=matches.slice(); SK.tot=L.length; SK.done=0; let i=0, fresh=0;
+  const step=()=>{ if(run!==SK.run) return; const t0=performance.now();
+    while(i<L.length&&performance.now()-t0<14){ const m=L[i++]; let t=cache[m.id]; if(!t){ t=skCalc(m); if(t){ cache[m.id]=t; fresh++ } } if(t) SK.tup.set(m.id,t) }
+    SK.done=i; if(curTab==="skorus") skProg();
+    if(i<L.length) setTimeout(step,0); else { SK.n=key; SK.busy=false; if(fresh){ try{ const keep={}; for(const m of L) if(cache[m.id]) keep[m.id]=cache[m.id]; localStorage.setItem("sk142",JSON.stringify({v:1,d:keep})) }catch(e){} } if(curTab==="skorus") renderSkorus() } };
+  setTimeout(step,0) }
+function skProg(){ const el=$("sk-prog"); if(el) el.textContent=`Hesaplanıyor: ${SK.done.toLocaleString("tr-TR")} / ${SK.tot.toLocaleString("tr-TR")} maç (ilk açılışta biraz sürer, sonra kayıtlı kalır)` }
+function skFind(t,mode,exId){ const out=[]; for(const m of PLAYED){ if(m.id===exId) continue; const u=SK.tup.get(m.id); if(u&&(mode?skClose(t,u,mode):(u[0]===t[0]&&u[1]===t[1]&&u[2]===t[2]&&(!SK.use33||u[3]===t[3])))) out.push(m) } return out }
+function skStats(L){ const n=L.length, c={ms1:0,msx:0,ms2:0,ov:0,kg:0}, sc={}, im={};
+  for(const m of L){ const o=m.o; if(o.ms==="1")c.ms1++; else if(o.ms==="0")c.msx++; else c.ms2++; if(o.tg>2)c.ov++; if(o.h>0&&o.a>0)c.kg++; const k=o.h+"-"+o.a; sc[k]=(sc[k]||0)+1;
+    if(o.ih!=null){ const a=o.ih>o.ia?"1":o.ih===o.ia?"X":"2", b=o.ms==="1"?"1":o.ms==="0"?"X":"2"; im[a+"/"+b]=(im[a+"/"+b]||0)+1 } }
+  const top=(o,k)=>Object.entries(o).sort((x,y)=>y[1]-x[1]).slice(0,k); return {n,c,sc:top(sc,6),im:top(im,4)} }
+function renderSkorus(){
+  const el=$("sk-out"); if(!el||$("p-skorus").hidden) return;
+  if(SK.n===-1||SK.busy||SK.n!==matches.length+"|"+PLAYED.length){ el.innerHTML=`<div class="card"><h2>Skor Oranı Eşleşmesi</h2><p class="note" style="margin:0 0 8px">2-1, 2-2, 3-2 ve 3-3 oranları bültende yok; uygulama MS, 2,5 A/Ü ve KG oranlarından hesaplıyor.</p><p class="note" id="sk-prog" style="margin:0"></p></div>`; skStart(); skProg(); return }
+  const today=isoD(new Date()), up=matches.filter(m=>!m.o&&m.tarih>=today&&SK.tup.has(m.id)).sort((a,b)=>(a.tarih+a.saat).localeCompare(b.tarih+b.saat)).slice(0,150);
+  const cnt={}; const cn=m=>{ const t=SK.tup.get(m.id), k=t.join("|")+SK.use33; if(cnt[k]==null) cnt[k]=skFind(t,0,m.id).length; return cnt[k] };
+  let t=null, m0=null; if(SK.sel){ m0=byId.get(SK.sel)||matches.find(x=>x.id===SK.sel); if(m0&&SK.tup.has(m0.id)) t=SK.tup.get(m0.id) }
+  if(SK.vals&&SK.vals.every(v=>v>0)) t=SK.vals;
+  let h=`<div class="card"><h2>Skor Oranı Eşleşmesi</h2><p class="note" style="margin:0 0 8px">Aşağıdaki yaklaşan maçlardan birine dokun ya da dört oranı kendin yaz. Skor oranları birden (küsuratsız) aynı olan eski maçlar Excel görünümünde listelenir. Oranlar hesaplanmıştır, Nesine'nin gerçek oranı değildir (yaklaşık, ±%25).</p>
+   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">${SK_S.map((s,i)=>`<label class="note" style="display:block">${s}<input class="inp" inputmode="numeric" data-skv="${i}" value="${t?t[i]:""}" style="width:100%"></label>`).join("")}</div>
+   <div class="seg" id="sk-mode" style="margin-bottom:6px"><button data-md="0" aria-pressed="${!SK.mode}">Birebir</button><button data-md="1" aria-pressed="${!!SK.mode}">Yakın (±1/2/4)</button></div>
+   <div class="seg" id="sk-33" style="margin:0 0 6px 6px"><button data-u="0" aria-pressed="${!SK.use33}">3-3 hariç</button><button data-u="1" aria-pressed="${SK.use33}">3-3 dahil</button></div>
+   <p class="note" style="margin:0">${SK.tup.size.toLocaleString("tr-TR")} maçın skor oranı hesaplandı.</p></div>
+   <div class="card" style="padding:8px 0 0"><div class="note" style="padding:0 12px 8px"><b>Yaklaşan maçlar</b> · bir maça dokun, eşleri aşağıda açılsın</div>
+    <div class="gridwrap" style="max-height:48vh;overflow:auto"><table class="g"><thead><tr class="grp"><th colspan="2" class="L">Maç</th><th colspan="4">Skor oranı (hesaplı)</th><th colspan="3">MS oranı</th><th>Eş</th></tr>
+    <tr class="col"><th>Tarih</th><th class="st L">Ev Sahibi – Deplasman</th>${SK_S.map(x=>`<th>${x}</th>`).join("")}<th>1</th><th>X</th><th>2</th><th>Maç</th></tr></thead>
+    <tbody>${up.length?up.map(m=>{ const u=SK.tup.get(m.id), f=x=>x==null?"":fmt(x); return `<tr data-sk="${esc(m.id)}"${m.id===SK.sel?' class="ref"':""} style="cursor:pointer"><td>${dshort(m.tarih)}<small style="display:block;color:var(--muted)">${esc(m.saat)}</small></td><td class="st L"><span class="h">${esc(m.ev)}</span><span class="vs">–</span><span class="a">${esc(m.dep)}</span></td>${u.map(v=>`<td>${v}</td>`).join("")}<td>${f(m.ms1)}</td><td>${f(m.msx)}</td><td>${f(m.ms2)}</td><td><b>${cn(m)}</b></td></tr>` }).join(""):`<tr><td colspan="10">Yaklaşan maç yok</td></tr>`}</tbody></table></div></div>`;
+  if(t){ const L=skFind(t,SK.mode,m0?m0.id:null).sort((x,y)=>(y.tarih+y.saat).localeCompare(x.tarih+x.saat)), S=skStats(L), pc=x=>S.n?"%"+Math.round(x/S.n*100):"–";
+    const od=v=>v==null?"":fmt(v), tc=u=>u.map(v=>`<td>${v}</td>`).join("");
+    const row=(m,ref)=>{ const u=SK.tup.get(m.id)||["","","",""], o=m.o; return `<tr data-id="${esc(m.id)}"${ref?' class="ref"':""}><td>${dshort(m.tarih)}</td><td class="st L"><span class="h">${esc(m.ev)}</span><span class="vs">–</span><span class="a">${esc(m.dep)}</span></td>${tc(u)}<td>${od(m.ms1)}</td><td>${od(m.msx)}</td><td>${od(m.ms2)}</td><td>${o&&o.ih!=null?o.ih+"-"+o.ia:o?"–":""}</td><td><b>${o?o.h+"-"+o.a:"bekliyor"}</b></td></tr>` };
+    const sumC=S.n?`MS 1/X/2: ${pc(S.c.ms1)}/${pc(S.c.msx)}/${pc(S.c.ms2)} · 2,5 Üst ${pc(S.c.ov)} · KG Var ${pc(S.c.kg)} · en sık skor ${S.sc.slice(0,3).map(([k,v])=>k+" ("+v+")").join(", ")}`:"Eş bulunamadı";
+    h+=`<div class="card" style="padding:8px 0 0"><div class="note" style="padding:0 12px 8px"><b>${S.n} eş maç</b> · ${sumC}${S.n&&S.n<8?' · <b>az maç, güvenme</b>':""}</div>
+      <div class="gridwrap" style="max-height:70vh;overflow:auto"><table class="g"><thead><tr class="grp"><th colspan="2" class="L">Maç</th><th colspan="4">Skor oranı (hesaplı)</th><th colspan="3">MS oranı</th><th colspan="2">Sonuç</th></tr>
+      <tr class="col"><th>Tarih</th><th class="st L">Ev Sahibi – Deplasman</th>${SK_S.map(x=>`<th>${x}</th>`).join("")}<th>1</th><th>X</th><th>2</th><th>İY</th><th>MS</th></tr></thead>
+      <tbody>${m0?row(m0,true):""}${L.slice(0,400).map(m=>row(m,false)).join("")}</tbody></table></div>${L.length>400?`<p class="note" style="padding:6px 12px;margin:0">İlk 400 maç gösteriliyor (toplam ${L.length}).</p>`:""}</div>` }
+  el.innerHTML=h;
+  el.querySelectorAll("[data-sk]").forEach(r=>r.addEventListener("click",()=>{ SK.sel=r.dataset.sk; SK.vals=null; renderSkorus(); const x=el.querySelector(".card:last-child"); if(x&&x.scrollIntoView) x.scrollIntoView({block:"start"}) }));
+  el.querySelectorAll("[data-skv]").forEach(i=>i.addEventListener("change",()=>{ const v=[...el.querySelectorAll("[data-skv]")].map(x=>parseInt(x.value,10)); SK.vals=v.every(x=>x>0)?v:null; if(SK.vals) SK.sel=""; renderSkorus() }));
+  el.querySelectorAll("#sk-33 [data-u]").forEach(b=>b.addEventListener("click",()=>{ SK.use33=b.dataset.u==="1"; renderSkorus() }));
+  el.querySelectorAll("#sk-mode [data-md]").forEach(b=>b.addEventListener("click",()=>{ SK.mode=+b.dataset.md; renderSkorus() })) }
+const APP_VER="142";
 let toastT=null;
 function toast(msg){ const t=$("toast"); if(!t) return; t.innerHTML=`<span>${SI.check}</span>${esc(msg)}`; t.hidden=false; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.hidden=true,250) },1600) }
 async function saveCfg(patch,msg){ profile.cfg=Object.assign({},profile.cfg||{},patch); applyCfg(); try{ if(db) await db.doc("settings/profile").set(Object.assign({},profile)); toast(msg||"Kaydedildi") }catch(e){ toast("Kaydedilemedi, tekrar dene") } }
@@ -8861,7 +8919,7 @@ function renderStorage(){ renderOddAudit(); const el=$("storage"); if(!el) retur
   el.innerHTML=`<div class="card"><h2>Veritabanı</h2><div class="track"><div class="fill" style="width:${Math.max(1,n/5000*100).toFixed(1)}%"></div></div><p class="note" style="margin:6px 0 0"><b>${n}</b> / 5.000 belge kullanılıyor. Büyük bültenler otomatik parçalara bölünür; her hafta yaklaşık 3–6 belge eklenir, bu da <b>yıllarca</b> yetecek kapasite demektir. Uygulama sınıra yaklaşırsa burada uyarır.</p></div>` }
 
 // ---------- BİLGİ (i) ----------
-const HELP={gunkupon:"Günün kuponu: bugünün (başlamamış) ya da yarının orta/yüksek güvenli, bültende oranı olan tahminlerinden, farklı bahis türlerinden seçilir. Altındaki kartlar her bahis türü için günün en güçlü tek tahminidir (İY/MS, İlk yarı, 3,5 Üst, 3,5 Alt, İY KG Var, her iki yarı KG Var, skor). İhtimaller Tahmin Merkezi'nin modelinden gelir; isabeti Yöntem Karnesi › Tahmin motoru karnesi'nde oynanmış maçlarda ölçülür. Uydurma değildir ama garanti de değildir.",iyms:"Yalnızca bültende 9 İY/MS oranı olan maçlar. Oran ara: İY/MS seçeneğini (örn. 1/2) ve oranı (örn. 28,50) yaz; bu oranla açılmış oynanmış maçların İY ve MS skorları, kaçının o İY/MS ile bittiği ve aynı oranla açılan oynanmamış maçlar listelenir. Benzerlik en fazla ±0,02. Bugünün maçları: her maçın 9 İY/MS oranı; bir orana dokununca o oranın arşivi açılır.",ayarlar:"Uygulamanın tüm ayarları tek yerde: görünüm, ana sayfada ne görüneceği, tahmin eşiği, alarmın hangi oran gruplarında ve hangi benzerlikte çalacağı, varsayılan kupon bedeli, otomatik çıkış süresi, yedek ve satış ayarları. Değişiklikler anında kaydedilir. Oran benzerliğinin en fazla ±0,02 olması yöntemin temel kuralıdır ve değiştirilemez.",
+const HELP={skorus:"Bültende 2-1, 2-2, 3-2 ve 3-3 skor oranları yok. Uygulama MS, 2,5 A/Ü ve KG oranlarından her skorun oranını hesaplar (Poisson modeli, 45 gerçek Nesine maçıyla ayarlı, yaklaşık ±%25) ve küsuratı atar. Bir maç seçersen ya da dört oranı yazarsan, dördü birden aynı olan oynanmış maçlar bulunur; MS, 2,5 Üst, KG, en sık skor ve İY/MS yüzdeleri gösterilir. Yakın seçeneği küçük farkları da eş sayar. Test: eşler tek başına oranlardan daha iyi tahmin etmedi, bu yüzden bilgi amaçlıdır. Sayfa işe yaramazsa silinebilir.",gunkupon:"Günün kuponu: bugünün (başlamamış) ya da yarının orta/yüksek güvenli, bültende oranı olan tahminlerinden, farklı bahis türlerinden seçilir. Altındaki kartlar her bahis türü için günün en güçlü tek tahminidir (İY/MS, İlk yarı, 3,5 Üst, 3,5 Alt, İY KG Var, her iki yarı KG Var, skor). İhtimaller Tahmin Merkezi'nin modelinden gelir; isabeti Yöntem Karnesi › Tahmin motoru karnesi'nde oynanmış maçlarda ölçülür. Uydurma değildir ama garanti de değildir.",iyms:"Yalnızca bültende 9 İY/MS oranı olan maçlar. Oran ara: İY/MS seçeneğini (örn. 1/2) ve oranı (örn. 28,50) yaz; bu oranla açılmış oynanmış maçların İY ve MS skorları, kaçının o İY/MS ile bittiği ve aynı oranla açılan oynanmamış maçlar listelenir. Benzerlik en fazla ±0,02. Bugünün maçları: her maçın 9 İY/MS oranı; bir orana dokununca o oranın arşivi açılır.",ayarlar:"Uygulamanın tüm ayarları tek yerde: görünüm, ana sayfada ne görüneceği, tahmin eşiği, alarmın hangi oran gruplarında ve hangi benzerlikte çalacağı, varsayılan kupon bedeli, otomatik çıkış süresi, yedek ve satış ayarları. Değişiklikler anında kaydedilir. Oran benzerliğinin en fazla ±0,02 olması yöntemin temel kuralıdır ve değiştirilemez.",
  home:"Ana menü. Kartlardan bölümlere girersin. Üstteki arama kutusuna takım adı yazınca o takımın arşivdeki tüm maçları açılır. Eksik skor, eşleşme alarmı ve yedek hatırlatmaları burada görünür.",
  tahmin:"Oynanmamış her maç için tüm bahis türlerinin (maç sonucu, çifte şans, İY/MS, MS+KG, MS+Alt/Üst, 0,5–4,5 Alt/Üst, İY 0,5/1,5/2,5, ev ve deplasman gol alt/üst, KG, İY KG, 2. yarı KG, ilk gol, toplam gol aralığı, tek/çift, yarı sonuçları, fark…) ihtimali hesaplanır. Kaynak 1: açılış oranlarından ilk yarı ve ikinci yarı ayrı gol modeli. Kaynak 2: arşivde MS, İY ya da İY/MS oranları birlikte birebir → ±0,01 → en fazla ±0,02 benzeyen maçlar (en az ayarlardaki maç sayısı kadar varsa, sayısına göre ağırlıkla katılır). Öne çıkan tahmin: eşiği geçen ve o bahsin sıradan bir maçtaki oranından en çok yukarıda olan bahis. Gerçekçiliği Yöntem Karnesi › Tahmin motoru karnesi ile oynanmış maçlarda ölçülür.",
  alarm:"Yeni bülten yüklediğinde, oynanmamış maçların MS 1-X-2, İY 1-X-2 ve İY/MS oranları arşivle karşılaştırılır. Gruptaki oranların hepsi birebir, ±0,01 ya da ±0,02 aynı olan maçlar gruplara ayrılıp listelenir. Başka hiçbir orana bakılmaz.",
