@@ -2893,7 +2893,7 @@ d.addEventListener("click",rm);setTimeout(rm,1400)})()</script>
       <button data-s="u" aria-pressed="false">Oynanmamış</button>
     </div>
     <select id="view" aria-label="Görünüm" style="flex:0 1 190px;width:auto">
-      <option value="excel">Excel görünümü</option><option value="iyms">İY/MS (9 oran + sonuç)</option><option value="sade">Sade (MS · İY · A/Ü · KG)</option><option value="oran">Sadece oranlar</option><option value="tum">Tüm sütunlar</option><option value="ozel">Özel…</option>
+      <option value="excel">Excel görünümü</option><option value="skor">Skor oranı görünümü</option><option value="iyms">İY/MS (9 oran + sonuç)</option><option value="sade">Sade (MS · İY · A/Ü · KG)</option><option value="oran">Sadece oranlar</option><option value="tum">Tüm sütunlar</option><option value="ozel">Özel…</option>
     </select>
     <button class="tbtn" id="statbtn">İstatistik</button>
     <button class="tbtn primary" id="twinbtn">Eşi olan maçlar</button>
@@ -3230,10 +3230,11 @@ $("year").value=new Date().getFullYear();
 document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",()=>showTab(b.dataset.tab)));
 function showTab(t,fromNav){
   if(window.GA_SITE){ if(t==="profil"){ GA_SITE.account(); return } if(!GA_SITE.admin&&["veri","sonuc","takvim","loto","kalite"].includes(t)) t="home" }
+  let skT=false; if(t==="skorus"){ if(viewKey!=="skor"){ skPrev=viewKey } viewKey="skor"; skPick=false; skT=true; t="tablo"; syncViewSelect() } else if(t==="tablo"&&viewKey==="skor"&&!skPick){ viewKey=skPrev||"excel"; syncViewSelect() }
   if(!PAGES[t]) t="home"; if(t!=="kilit"&&gaNeed(t)){ gaLockFor=t; t="kilit" } if(!fromNav&&t!==curTab&&$("p-"+curTab)&&!$("p-"+curTab).hidden){ tabHist.push(curTab); if(tabHist.length>30) tabHist.shift(); navPush({tab:t}) } curTab=t;
   document.querySelectorAll("#bnav [data-nav]").forEach(b=>b.classList.toggle("on",b.dataset.nav===t||(b.dataset.nav==="more"&&!["home","tahmin","kupon","iyms"].includes(t))));
   Object.keys(PAGES).forEach(x=>$("p-"+x).hidden=x!==t); document.body.dataset.page=t; setTimeout(()=>{ try{ gaTickPos() }catch(e){} },0); document.querySelectorAll("#sd-nav [data-side]").forEach(b=>b.classList.toggle("on",b.dataset.side===t));
-  $("ptitle").textContent=PAGES[t]; $("back").hidden=t==="home";
+  $("ptitle").textContent=(t==="tablo"&&viewKey==="skor")?"Skor Oranları":PAGES[t]; $("back").hidden=t==="home";
   $("tbar").hidden=$("tbar2").hidden=t!=="tablo";
   { const ph=$("phero"); ph.hidden=t==="home"||t==="tablo"; if(!ph.hidden){ $("ph-t").textContent=PAGES[t]; $("ph-s").textContent=SUBS[t]||""; $("ph-ic").innerHTML=TILE_ICON[t]||""; try{ const g=SIDE_NAV.find(x=>x[1].includes(t)); $("ph-g").textContent=g?g[0]:"GÜÇLÜ ANALİZ" }catch(e){} } }
   if(t==="tahmin") renderTahmin();
@@ -3258,7 +3259,6 @@ function showTab(t,fromNav){
   if(t==="terminal") renderTerminal();
   if(t==="perf") renderPerf();
   if(t==="kalite") renderKalite();
-  if(t==="skorus") renderSkorus();
   if(t==="kilit") renderKilit();
   if(t==="asistan") renderAsistan();
   if(t==="toto") renderToto();
@@ -3356,6 +3356,10 @@ const COLDEFS=[
  O("iy1","İY 1","İlk Yarı Sonucu",1),O("iyx","İY X","İlk Yarı Sonucu"),O("iy2","İY 2","İlk Yarı Sonucu"),
  O("iy15_alt","Alt","İY 1,5 A/Ü",1),O("iy15_ust","Üst","İY 1,5 A/Ü"),
  OT("iyms11","1/1","İY/MS Oran",1),OT("iyms10","1/X","İY/MS Oran"),OT("iyms12","1/2","İY/MS Oran"),OT("iyms01","X/1","İY/MS Oran"),OT("iyms00","X/X","İY/MS Oran"),OT("iyms02","X/2","İY/MS Oran"),OT("iyms21","2/1","İY/MS Oran"),OT("iyms20","2/X","İY/MS Oran"),OT("iyms22","2/2","İY/MS Oran"),
+ {id:"so_0",label:"2-1",grp:"Skor Oranı",kind:"odd",tr:true,L:true,get:m=>skVal(m,0),txt:m=>{const v=skVal(m,0); return v==null?"":String(v)}},
+ {id:"so_1",label:"2-2",grp:"Skor Oranı",kind:"odd",tr:true,L:false,get:m=>skVal(m,1),txt:m=>{const v=skVal(m,1); return v==null?"":String(v)}},
+ {id:"so_2",label:"3-2",grp:"Skor Oranı",kind:"odd",tr:true,L:false,get:m=>skVal(m,2),txt:m=>{const v=skVal(m,2); return v==null?"":String(v)}},
+ {id:"so_3",label:"3-3",grp:"Skor Oranı",kind:"odd",tr:true,L:false,get:m=>skVal(m,3),txt:m=>{const v=skVal(m,3); return v==null?"":String(v)}},
  B("r_iy05","0.5","Sonuç · İlk Yarı",1,o=>hasIY(o)?o.iyt>0.5:null,"Ü","A"),
  B("r_iy15","1.5","Sonuç · İlk Yarı",0,o=>hasIY(o)?o.iyt>1.5:null,"Ü","A"),
  B("r_iyev","Ev","Sonuç · İlk Yarı",0,o=>hasIY(o)?o.ih>0:null,"GOL","YOK"),
@@ -3409,9 +3413,10 @@ function renderGrid(){
   const wrap=$("gridwrap");
   renderChips();
   if(!matches.length){wrap.innerHTML=`<div class="empty">Henüz program yok. <b>Program Yükle</b> sekmesinden iddaa PDF'ini ekle.</div>`;$("countline").textContent="";return}
+  if(viewKey==="skor"&&!skReady()){ skStart(); skProg() }
   const list=currentList(), played=list.filter(m=>m.o), COLV=visCols();
   const PRE=COLV.filter(c=>c.grp==="Detay"), POST=COLV.filter(c=>c.grp!=="Detay");
-  $("countline").innerHTML=`<b>${list.length}</b> maç · ${played.length} oynanmış${status==="p"?"":` · ${list.length-played.length} oynanmamış`}`;
+  if(viewKey!=="skor"||skReady()) $("countline").innerHTML=`<b>${list.length}</b> maç · ${played.length} oynanmış${status==="p"?"":` · ${list.length-played.length} oynanmamış`}`;
   const grpRow=cols=>{let prev=null,span=0,h="";const fl=()=>{if(prev!==null) h+=`<th class="L" colspan="${span}">${esc(prev)}</th>`};for(const c of cols){if(c.grp===prev) span++; else {fl(); prev=c.grp; span=1}} fl(); return h};
   const gr='<tr class="grp">'+grpRow(PRE)+'<th class="st L">Maç</th>'+grpRow(POST)+'</tr>';
   const colH=cols=>cols.map(c=>{const on=!!F[c.id]||sortBy===c.id; return `<th class="${c.L?"L":""}"><div class="hc">${esc(c.label)}<button class="fb${on?" on":""}" data-f="${c.id}" aria-label="${esc(c.grp+" "+c.label)} filtresi">${FUNNEL}</button></div></th>`}).join("");
@@ -3665,12 +3670,13 @@ const ODDGROUPS=["Maç Sonucu","Handikaplı MS","İlk Golü Kim Atar","MS ve 2,5
 const RESGROUPS=ALLGROUPS.filter(g=>g.startsWith("Sonuç"));
 const PRESETS={
   excel:{name:"Excel görünümü",groups:["Detay","Skor","Maç Sonucu","İlk Yarı Sonucu","İY/MS Oran",...RESGROUPS]},
+  skor:{name:"Skor oranı görünümü",groups:["Detay","Skor","Skor Oranı","Maç Sonucu","Sonuç · Maç Sonucu","Sonuç"]},
   iyms:{name:"İY/MS (9 oran + sonuç)",groups:["Detay","Skor","İY/MS Oran","Sonuç"]},
   tum:{name:"Tüm sütunlar",groups:ALLGROUPS},
   oran:{name:"Sadece oranlar",groups:["Detay","Skor",...ODDGROUPS]},
   sade:{name:"Sade (MS · İY · A/Ü · KG)",groups:["Detay","Skor","Maç Sonucu","İlk Yarı Sonucu","2,5 A/Ü","Karşılıklı Gol","Sonuç · Maç Sonucu","Sonuç"]},
 };
-let viewKey="excel", customGroups=null;
+let viewKey="excel", customGroups=null, skPrev="", skPick=false;
 try{const v=JSON.parse(localStorage.getItem("view1")||"null"); if(v){viewKey=v.k; customGroups=v.c}}catch(e){}
 function visibleGroups(){ if(viewKey==="ozel"&&customGroups) return new Set(customGroups); return new Set((PRESETS[viewKey]||PRESETS.excel).groups) }
 function visCols(){ const g=visibleGroups(); return COLDEFS.filter(c=>g.has(c.grp)) }
@@ -3679,7 +3685,7 @@ function syncViewSelect(){ const s=$("view"); s.value=viewKey }
 $("view").addEventListener("change",()=>{
   const v=$("view").value;
   if(v==="ozel"){ openCustomView(); return }
-  viewKey=v; saveView(); renderGrid();
+  skPick=v==="skor"; if(v!=="skor") skPrev=""; viewKey=v; saveView(); renderGrid(); $("ptitle").textContent=v==="skor"?"Skor Oranları":PAGES.tablo;
 });
 function openCustomView(){
   const cur=visibleGroups();
@@ -3851,12 +3857,13 @@ $("statbtn").addEventListener("click",openStats);
 $("twinbtn").addEventListener("click",openTwins);
 // v136: Oran Arşivi · "Eşi olan maçlar" — bültendeki oynanmamış maçları tarar; 9 İY/MS oranı küsuratsız birebir aynı oynanmış maçları bulur
 let twDay="", twMin=1, twSort="n", twIdx={s:""}, twBase={s:""};
-const twKey=m=>AGRP.iyms.every(k=>m[k]!=null)?AGRP.iyms.map(k=>trO(m[k])).join("-"):null;
-function twIndex(){ const s=PLAYED.length+"|"+matches.length; if(twIdx.s===s) return twIdx.G; const G=new Map(); for(const m of PLAYED){ if(!m.o) continue; const k=twKey(m); if(!k) continue; let a=G.get(k); if(!a){ a=[]; G.set(k,a) } a.push(m) } twIdx={s,G}; return G }
-function twBaseR(){ const s=PLAYED.length+"|"+matches.length; if(twBase.s===s) return twBase.B; const P=PLAYED.filter(m=>m.o&&twKey(m)), B={}; for(const k of marketKeys()){ if(/^x:(i?sc|imsc):/.test(k)) continue; let n=0,w=0; for(const m of P){ const r=win(k,m); if(r==null) continue; n++; if(r) w++ } if(n) B[k]=w/n } twBase={s,B}; return B }
+const twKey=m=>{ if(viewKey==="skor"){ const t=SK.tup.get(m.id); return t?(SK.use33?t:t.slice(0,3)).join("-"):null } return AGRP.iyms.every(k=>m[k]!=null)?AGRP.iyms.map(k=>trO(m[k])).join("-"):null };
+const twSig=()=>viewKey+(viewKey==="skor"?SK.use33+""+SK.n:"")+"|"+PLAYED.length+"|"+matches.length;
+function twIndex(){ const s=twSig(); if(twIdx.s===s) return twIdx.G; const G=new Map(); for(const m of PLAYED){ if(!m.o) continue; const k=twKey(m); if(!k) continue; let a=G.get(k); if(!a){ a=[]; G.set(k,a) } a.push(m) } twIdx={s,G}; return G }
+function twBaseR(){ const s=twSig(); if(twBase.s===s) return twBase.B; const P=PLAYED.filter(m=>m.o&&twKey(m)), B={}; for(const k of marketKeys()){ if(/^x:(i?sc|imsc):/.test(k)) continue; let n=0,w=0; for(const m of P){ const r=win(k,m); if(r==null) continue; n++; if(r) w++ } if(n) B[k]=w/n } twBase={s,B}; return B }
 function twTop(L,f){ const c={}; let n=0; for(const m of L){ const v=f(m); if(v==null) continue; n++; c[v]=(c[v]||0)+1 } const t=Object.entries(c).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0]; return t?{v:t[0],c:t[1],n}:null }
 function twBets(L){ const B=twBaseR(), R=[]; for(const k in B){ if(B[k]>=0.85) continue; let n=0,w=0; for(const m of L){ const r=win(k,m); if(r==null) continue; n++; if(r) w++ } if(n&&w) R.push({k,n,w,p:w/n,lift:w/n-B[k]}) } R.sort((a,b)=>b.p-a.p||b.lift-a.lift||b.n-a.n); return R }
-function openTwins(){ const today=isoD(new Date()), G=twIndex();
+function openTwins(){ if(viewKey==="skor"&&!skReady()){ toast("Skor oranları hesaplanıyor, birkaç saniye sonra tekrar bas"); skStart(); return } const today=isoD(new Date()), G=twIndex(), SKM=viewKey==="skor";
   const U=matches.filter(m=>!m.o&&!m.ert&&m.tarih>=today&&twKey(m));
   const days=[...new Set(U.map(m=>m.tarih))].sort(); if(twDay&&!days.includes(twDay)) twDay="";
   let L=U.filter(m=>!twDay||m.tarih===twDay).map(m=>{ const T=(G.get(twKey(m))||[]).filter(x=>x.id!==m.id); return {m,T} });
@@ -3866,7 +3873,7 @@ function openTwins(){ const today=isoD(new Date()), G=twIndex();
   L.sort(twSort==="saat"?(a,b)=>tm(a).localeCompare(tm(b)):twSort==="bet"?(a,b)=>((b.b[0]&&b.b[0].p)||0)-((a.b[0]&&a.b[0].p)||0)||b.T.length-a.T.length:(a,b)=>b.T.length-a.T.length||tm(a).localeCompare(tm(b)));
   const seg=(id,cur,O)=>`<div class="seg sseg twseg" id="${id}">${O.map(([v,l])=>`<button data-v="${v}" aria-pressed="${String(v)===String(cur)}">${l}</button>`).join("")}</div>`;
   openPopup(`<div class="sh-head"><div><b>Eşi olan maçlar</b><small>Bültendeki ${tot} maçın ${withT} tanesinin arşivde eşi var</small></div><button class="xbtn" data-close aria-label="Kapat">✕</button></div>
-   <div class="sh-body"><p class="note" style="margin:0">Oynanmamış her maçın <b>9 İY/MS oranı</b> küsuratsız alınır (34,90 → 34). Arşivde 9'u da birebir aynı olan oynanmış maçlar <b>eşi</b> sayılır. Maça dokununca Oran Arşivi bu 9 oranla filtrelenir.</p>
+   <div class="sh-body">${SKM?`<p class="note" style="margin:0">Oynanmamış her maçın <b>2-1 · 2-2 · 3-2${SK.use33?" · 3-3":""}</b> hesaplı oranı küsuratsız alınır. Arşivde bunların hepsi birebir aynı olan oynanmış maçlar <b>eşi</b> sayılır. Maça dokununca Oran Arşivi bu oranlarla filtrelenir. Oranlar hesaplıdır (gerçeğine yakın, birebir değil).</p><div><label class="lb">3-3 oranı</label>${seg("tw-33",SK.use33?1:0,[[0,"Hariç"],[1,"Dahil"]])}</div>`:`<p class="note" style="margin:0">Oynanmamış her maçın <b>9 İY/MS oranı</b> küsuratsız alınır (34,90 → 34). Arşivde 9'u da birebir aynı olan oynanmış maçlar <b>eşi</b> sayılır. Maça dokununca Oran Arşivi bu 9 oranla filtrelenir.</p>`}
     <div><label class="lb" for="tw-day">Gün</label><select id="tw-day"><option value="">Tüm günler</option>${days.map(d=>`<option value="${d}" ${d===twDay?"selected":""}>${dshort(d)}</option>`).join("")}</select></div>
     <div><label class="lb">En az eşi</label>${seg("tw-min",twMin,[[1,"1+"],[2,"2+"],[3,"3+"],[5,"5+"],[8,"8+"],[12,"12+"]])}</div>
     <div><label class="lb">Sırala</label>${seg("tw-sort",twSort,[["n","Eşi çok"],["bet","Bahis gücü"],["saat","Saat"]])}</div>
@@ -3876,11 +3883,13 @@ function openTwins(){ const today=isoD(new Date()), G=twIndex();
     <p class="note" style="margin:0">Sayılar: eşlerin kaçında geldiği (ör. 6/7). Çok yaygın bahisler (geneli %85 ve üstü, ör. 0,5 Üst) listelenmez. Eşi az olan maçta sonuç şansa açıktır; ${MIN_S} ve üstü eşi olanlar daha güvenilir.</p></div>`);
   const P=$("popup");
   const sd=$("tw-day"); if(sd) sd.addEventListener("change",()=>{ twDay=sd.value; openTwins() });
+  P.querySelectorAll("#tw-33 button").forEach(b=>b.addEventListener("click",()=>{ SK.use33=+b.dataset.v===1; openTwins() }));
   P.querySelectorAll("#tw-min button").forEach(b=>b.addEventListener("click",()=>{ twMin=+b.dataset.v; openTwins() }));
   P.querySelectorAll("#tw-sort button").forEach(b=>b.addEventListener("click",()=>{ twSort=b.dataset.v; openTwins() }));
   P.querySelectorAll("[data-tw]").forEach(b=>b.addEventListener("click",()=>{ const m=byId.get(b.dataset.tw); if(!m) return;
     for(const k in F) delete F[k]; hitCols.clear(); sortBy=null; q=""; $("q").value="";
-    for(const k of AGRP.iyms){ F[k]={set:new Set([trO(m[k])])}; hitCols.add(k) }
+    if(SKM){ const t=SK.tup.get(m.id)||[]; for(let i=0;i<(SK.use33?4:3);i++){ F["so_"+i]={set:new Set([String(t[i])])}; hitCols.add("so_"+i) } }
+    else for(const k of AGRP.iyms){ F[k]={set:new Set([trO(m[k])])}; hitCols.add(k) }
     refId=m.id; setStatus(""); closePopup(); limit=200; if(curTab!=="tablo") showTab("tablo"); else renderGrid(); $("gridwrap").scrollTop=0; window.scrollTo(0,0) }));
 }
 
@@ -4801,7 +4810,7 @@ try{ const u=JSON.parse(localStorage.getItem("oa_ui")||"{}"); if(u.font) documen
 
 // ================= SAYFA BAŞLIKLARI =================
 const PAGES={kapanis:"Açılış – Kapanış",y70:"%70 Üzeri",takvim:"Veri Takvimi",home:"Kontrol Paneli",tahmin:"Tahmin Merkezi",alarm:"Eşleşme Alarmı",analiz:"Oran Eşleştirme",tablo:"Oran Arşivi",kupon:"Kuponlarım",rapor:"Performans Raporu",sonuc:"Skor Merkezi",veri:"Bülten Yükleme",profil:"Hesabım",ayarlar:"Ayarlar",gunkupon:"Günün Kuponları",iyms:"İY/MS Merkezi",toto:"Spor Toto",loto:"Sayısal Oyunlar",msonuc:"Maç Sonuçları",terminal:"Oran Hareketi",perf:"Performans Merkezi",kalite:"Veri Kalitesi",skorus:"Skor Oranı Eşleşmesi",kilit:"Paket gerekli",asistan:"Yapay Zekâ Asistanı"};
-const SUBS={skorus:"2-1, 2-2, 3-2, 3-3 oranı birden aynı olan eski maçlar ve nasıl bittikleri",asistan:"Kayıtlı maç, oran ve sonuçlar üzerine Türkçe sohbet · internetsiz de çalışabilir",kilit:"Bu bölüm üyelik paketine bağlı",terminal:"Açılış oranı ile en son çekilen oran: ihtimal kaç puan, adil oran yüzde kaç değişti",perf:"Gerçek kayıtların isabeti, Brier ve log loss; ayrıca geriye dönük test",kalite:"Eksik skor, şüpheli skor, çıkarılan oran ve mükerrer kayıt denetimi",kapanis:"Her maçın bülten açılış oranı ile maç öncesi son oranı (Nesine, saatte bir) ve sonucu; benzer hareketli maçlar ve karne",toto:"A Güçlü Analiz · B Sürpriz · C İdeal · D Rastgele kolonları, formüllü özel sistem ve kupon performansı",msonuc:"Kayıtlı maç sonuçları gün gün: ilk yarı ve maç sonu skoru",loto:"Çılgın Sayısal, Süper Loto, Şans Topu, On Numara: sonuç yükleme, analiz, test ve istediğin sayıda kolon",gunkupon:"Bahis türüne göre ayrı kuponlar: KG Var, Üst, Alt, yarı KG, İY/MS, İY sonucu, iki yarıda gol, gol aralığı",y70:"Bülten oranına göre ihtimali %70'i geçen bahisler",iyms:"İY/MS oranı olan maçlar: her seçeneğin gerçek geçmişi, öne çıkan İY/MS ve skor senaryosu",ayarlar:"Uygulamayla ilgili her şeyi buradan değiştir",takvim:"Hangi günün bülteni ve skorları tam, hangisi eksik — bir bakışta",tahmin:"Gol odaklı 13 bahis türünde oranlardan ve gerçek sonuçlardan hesaplanan tahminler",alarm:"Arşivle birebir, ±0,01 ya da ±0,02 aynı açılış oranına sahip oynanmamış maçlar",analiz:"Oran grubunu, benzerliği ve eşiği sen seç; geçmiş maçlarla karşılaştır",karne:"Hangi ayar geçmişte gerçekten kazandırdı? Geleceği bilmeden yapılan test",ai:"Arşive dayalı maç yorumu · yalnızca maç soruları",kupon:"Kaydettiğin kuponlar, isabet ve kâr/zarar",rapor:"Günlük ve haftalık performans özeti",lig:"Liglere göre bahis türlerinin gerçekleşme oranları",rejim:"iddaa'nın kâr payı ve oranların davranışı ay ay değişiyor mu?",sonuc:"Mackolik PDF ile skor girişi ve otomatik skor denetimi",veri:"iddaa bülten PDF'ini yükle, yüklü bültenleri yönet",profil:"Profil fotoğrafı, hesap bilgileri ve şifre"};
+const SUBS={skorus:"Oran Arşivi görünümünde 2-1, 2-2, 3-2, 3-3 oranları",asistan:"Kayıtlı maç, oran ve sonuçlar üzerine Türkçe sohbet · internetsiz de çalışabilir",kilit:"Bu bölüm üyelik paketine bağlı",terminal:"Açılış oranı ile en son çekilen oran: ihtimal kaç puan, adil oran yüzde kaç değişti",perf:"Gerçek kayıtların isabeti, Brier ve log loss; ayrıca geriye dönük test",kalite:"Eksik skor, şüpheli skor, çıkarılan oran ve mükerrer kayıt denetimi",kapanis:"Her maçın bülten açılış oranı ile maç öncesi son oranı (Nesine, saatte bir) ve sonucu; benzer hareketli maçlar ve karne",toto:"A Güçlü Analiz · B Sürpriz · C İdeal · D Rastgele kolonları, formüllü özel sistem ve kupon performansı",msonuc:"Kayıtlı maç sonuçları gün gün: ilk yarı ve maç sonu skoru",loto:"Çılgın Sayısal, Süper Loto, Şans Topu, On Numara: sonuç yükleme, analiz, test ve istediğin sayıda kolon",gunkupon:"Bahis türüne göre ayrı kuponlar: KG Var, Üst, Alt, yarı KG, İY/MS, İY sonucu, iki yarıda gol, gol aralığı",y70:"Bülten oranına göre ihtimali %70'i geçen bahisler",iyms:"İY/MS oranı olan maçlar: her seçeneğin gerçek geçmişi, öne çıkan İY/MS ve skor senaryosu",ayarlar:"Uygulamayla ilgili her şeyi buradan değiştir",takvim:"Hangi günün bülteni ve skorları tam, hangisi eksik — bir bakışta",tahmin:"Gol odaklı 13 bahis türünde oranlardan ve gerçek sonuçlardan hesaplanan tahminler",alarm:"Arşivle birebir, ±0,01 ya da ±0,02 aynı açılış oranına sahip oynanmamış maçlar",analiz:"Oran grubunu, benzerliği ve eşiği sen seç; geçmiş maçlarla karşılaştır",karne:"Hangi ayar geçmişte gerçekten kazandırdı? Geleceği bilmeden yapılan test",ai:"Arşive dayalı maç yorumu · yalnızca maç soruları",kupon:"Kaydettiğin kuponlar, isabet ve kâr/zarar",rapor:"Günlük ve haftalık performans özeti",lig:"Liglere göre bahis türlerinin gerçekleşme oranları",rejim:"iddaa'nın kâr payı ve oranların davranışı ay ay değişiyor mu?",sonuc:"Mackolik PDF ile skor girişi ve otomatik skor denetimi",veri:"iddaa bülten PDF'ini yükle, yüklü bültenleri yönet",profil:"Profil fotoğrafı, hesap bilgileri ve şifre"};
 let curTab="home";
 $("back").addEventListener("click",()=>{ if(tabHist.length&&!navBusy){ try{ history.back() }catch(e){ showTab("home") } } else showTab("home") });
 $("avatar").addEventListener("click",()=>showTab("profil"));
@@ -8692,52 +8701,18 @@ function skCalc(m){ if(!skOk(m)) return null; const r=demargin([m.ms1,m.msx,m.ms
   const au=demargin([m.au25_alt,m.au25_ust]), kg=demargin([m.kg_var,m.kg_yok]);
   const f=fitLambdas({r,ov:au?au[1]:null,kg:kg?kg[0]:null},8,0.1,3.6,0.05), pa=pmf(f.a,6), pb=pmf(f.b,6);
   const t=SK_S.map((s,i)=>{ const [a,b]=s.split("-").map(Number); const p=pa[a]*pb[b]; return p>0?Math.floor(SK_K[i]/p):999 }); return t }
-function skTol(a,b,mode){ if(!mode) return a===b; const d=Math.abs(a-b); return d<=(b<20?1:b<40?2:4) }
-function skClose(t,u,mode){ for(let i=0;i<(SK.use33?4:3);i++) if(!skTol(t[i],u[i],mode)) return false; return true }
+const skVal=(m,i)=>{ const t=SK.tup.get(m.id); return t&&t[i]<999?t[i]:null };
+const skReady=()=>!SK.busy&&SK.n===matches.length+"|"+PLAYED.length;
 function skStart(){
   if(SK.busy) return; const key=matches.length+"|"+PLAYED.length; if(SK.n===key) return;
   SK.busy=true; SK.run++; const run=SK.run; SK.tup=new Map(); let cache={}; try{ const c=JSON.parse(localStorage.getItem("sk142")||"{}"); if(c&&c.v===1&&c.d) cache=c.d }catch(e){}
   const L=matches.slice(); SK.tot=L.length; SK.done=0; let i=0, fresh=0;
   const step=()=>{ if(run!==SK.run) return; const t0=performance.now();
     while(i<L.length&&performance.now()-t0<14){ const m=L[i++]; let t=cache[m.id]; if(!t){ t=skCalc(m); if(t){ cache[m.id]=t; fresh++ } } if(t) SK.tup.set(m.id,t) }
-    SK.done=i; if(curTab==="skorus") skProg();
-    if(i<L.length) setTimeout(step,0); else { SK.n=key; SK.busy=false; if(fresh){ try{ const keep={}; for(const m of L) if(cache[m.id]) keep[m.id]=cache[m.id]; localStorage.setItem("sk142",JSON.stringify({v:1,d:keep})) }catch(e){} } if(curTab==="skorus") renderSkorus() } };
+    SK.done=i; skProg();
+    if(i<L.length) setTimeout(step,0); else { SK.n=key; SK.busy=false; if(fresh){ try{ const keep={}; for(const m of L) if(cache[m.id]) keep[m.id]=cache[m.id]; localStorage.setItem("sk142",JSON.stringify({v:1,d:keep})) }catch(e){} } if(curTab==="tablo"&&viewKey==="skor") renderGrid() } };
   setTimeout(step,0) }
-function skProg(){ const el=$("sk-prog"); if(el) el.textContent=`Hesaplanıyor: ${SK.done.toLocaleString("tr-TR")} / ${SK.tot.toLocaleString("tr-TR")} maç (ilk açılışta biraz sürer, sonra kayıtlı kalır)` }
-function skFind(t,mode,exId){ const out=[]; for(const m of PLAYED){ if(m.id===exId) continue; const u=SK.tup.get(m.id); if(u&&(mode?skClose(t,u,mode):(u[0]===t[0]&&u[1]===t[1]&&u[2]===t[2]&&(!SK.use33||u[3]===t[3])))) out.push(m) } return out }
-function skStats(L){ const n=L.length, c={ms1:0,msx:0,ms2:0,ov:0,kg:0}, sc={}, im={};
-  for(const m of L){ const o=m.o; if(o.ms==="1")c.ms1++; else if(o.ms==="0")c.msx++; else c.ms2++; if(o.tg>2)c.ov++; if(o.h>0&&o.a>0)c.kg++; const k=o.h+"-"+o.a; sc[k]=(sc[k]||0)+1;
-    if(o.ih!=null){ const a=o.ih>o.ia?"1":o.ih===o.ia?"X":"2", b=o.ms==="1"?"1":o.ms==="0"?"X":"2"; im[a+"/"+b]=(im[a+"/"+b]||0)+1 } }
-  const top=(o,k)=>Object.entries(o).sort((x,y)=>y[1]-x[1]).slice(0,k); return {n,c,sc:top(sc,6),im:top(im,4)} }
-function renderSkorus(){
-  const el=$("sk-out"); if(!el||$("p-skorus").hidden) return;
-  if(SK.n===-1||SK.busy||SK.n!==matches.length+"|"+PLAYED.length){ el.innerHTML=`<div class="card"><p class="note" style="margin:0 0 8px">2-1, 2-2, 3-2 ve 3-3 oranları bültende yok; uygulama MS, 2,5 A/Ü ve KG oranlarından hesaplıyor.</p><p class="note" id="sk-prog" style="margin:0"></p></div>`; skStart(); skProg(); return }
-  const today=isoD(new Date()), up=matches.filter(m=>!m.o&&m.tarih>=today&&SK.tup.has(m.id)).sort((a,b)=>(a.tarih+a.saat).localeCompare(b.tarih+b.saat)).slice(0,150);
-  const cnt={}; const cn=m=>{ const t=SK.tup.get(m.id), k=t.join("|")+SK.use33; if(cnt[k]==null) cnt[k]=skFind(t,0,m.id).length; return cnt[k] };
-  let t=null, m0=null; if(SK.sel){ m0=byId.get(SK.sel)||matches.find(x=>x.id===SK.sel); if(m0&&SK.tup.has(m0.id)) t=SK.tup.get(m0.id) }
-  if(SK.vals&&SK.vals.every(v=>v>0)) t=SK.vals;
-  let h=`<div class="card"><p class="note" style="margin:0 0 8px">Aşağıdaki yaklaşan maçlardan birine dokun ya da dört oranı kendin yaz. Skor oranları birden (küsuratsız) aynı olan eski maçlar Excel görünümünde listelenir. Oranlar hesaplanmıştır, Nesine'nin gerçek oranı değildir (yaklaşık, ±%25).</p>
-   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">${SK_S.map((s,i)=>`<label class="note" style="display:block">${s}<input class="inp" inputmode="numeric" data-skv="${i}" value="${t?t[i]:""}" style="width:100%"></label>`).join("")}</div>
-   <div class="seg" id="sk-mode" style="margin-bottom:6px"><button data-md="0" aria-pressed="${!SK.mode}">Birebir</button><button data-md="1" aria-pressed="${!!SK.mode}">Yakın (±1/2/4)</button></div>
-   <div class="seg" id="sk-33" style="margin:0 0 6px 6px"><button data-u="0" aria-pressed="${!SK.use33}">3-3 hariç</button><button data-u="1" aria-pressed="${SK.use33}">3-3 dahil</button></div>
-   <p class="note" style="margin:0">${SK.tup.size.toLocaleString("tr-TR")} maçın skor oranı hesaplandı.</p></div>
-   <div class="card" style="padding:8px 0 0"><div class="note" style="padding:0 12px 8px"><b>Yaklaşan maçlar</b> · bir maça dokun, eşleri aşağıda açılsın</div>
-    <div class="gridwrap" style="max-height:48vh;overflow:auto"><table class="g"><thead><tr class="grp"><th colspan="2" class="L">Maç</th><th colspan="4">Skor oranı (hesaplı)</th><th colspan="3">MS oranı</th><th>Eş</th></tr>
-    <tr class="col"><th>Tarih</th><th class="st L">Ev Sahibi – Deplasman</th>${SK_S.map(x=>`<th>${x}</th>`).join("")}<th>1</th><th>X</th><th>2</th><th>Maç</th></tr></thead>
-    <tbody>${up.length?up.map(m=>{ const u=SK.tup.get(m.id), f=x=>x==null?"":fmt(x); return `<tr data-sk="${esc(m.id)}"${m.id===SK.sel?' class="ref"':""} style="cursor:pointer"><td>${dshort(m.tarih)}<small style="display:block;color:var(--muted)">${esc(m.saat)}</small></td><td class="st L"><span class="h">${esc(m.ev)}</span><span class="vs">–</span><span class="a">${esc(m.dep)}</span></td>${u.map(v=>`<td>${v}</td>`).join("")}<td>${f(m.ms1)}</td><td>${f(m.msx)}</td><td>${f(m.ms2)}</td><td><b>${cn(m)}</b></td></tr>` }).join(""):`<tr><td colspan="10">Yaklaşan maç yok</td></tr>`}</tbody></table></div></div>`;
-  if(t){ const L=skFind(t,SK.mode,m0?m0.id:null).sort((x,y)=>(y.tarih+y.saat).localeCompare(x.tarih+x.saat)), S=skStats(L), pc=x=>S.n?"%"+Math.round(x/S.n*100):"–";
-    const od=v=>v==null?"":fmt(v), tc=u=>u.map(v=>`<td>${v}</td>`).join("");
-    const row=(m,ref)=>{ const u=SK.tup.get(m.id)||["","","",""], o=m.o; return `<tr data-id="${esc(m.id)}"${ref?' class="ref"':""}><td>${dshort(m.tarih)}</td><td class="st L"><span class="h">${esc(m.ev)}</span><span class="vs">–</span><span class="a">${esc(m.dep)}</span></td>${tc(u)}<td>${od(m.ms1)}</td><td>${od(m.msx)}</td><td>${od(m.ms2)}</td><td>${o&&o.ih!=null?o.ih+"-"+o.ia:o?"–":""}</td><td><b>${o?o.h+"-"+o.a:"bekliyor"}</b></td></tr>` };
-    const sumC=S.n?`MS 1/X/2: ${pc(S.c.ms1)}/${pc(S.c.msx)}/${pc(S.c.ms2)} · 2,5 Üst ${pc(S.c.ov)} · KG Var ${pc(S.c.kg)} · en sık skor ${S.sc.slice(0,3).map(([k,v])=>k+" ("+v+")").join(", ")}`:"Eş bulunamadı";
-    h+=`<div class="card" style="padding:8px 0 0"><div class="note" style="padding:0 12px 8px"><b>${S.n} eş maç</b> · ${sumC}${S.n&&S.n<8?' · <b>az maç, güvenme</b>':""}</div>
-      <div class="gridwrap" style="max-height:70vh;overflow:auto"><table class="g"><thead><tr class="grp"><th colspan="2" class="L">Maç</th><th colspan="4">Skor oranı (hesaplı)</th><th colspan="3">MS oranı</th><th colspan="2">Sonuç</th></tr>
-      <tr class="col"><th>Tarih</th><th class="st L">Ev Sahibi – Deplasman</th>${SK_S.map(x=>`<th>${x}</th>`).join("")}<th>1</th><th>X</th><th>2</th><th>İY</th><th>MS</th></tr></thead>
-      <tbody>${m0?row(m0,true):""}${L.slice(0,400).map(m=>row(m,false)).join("")}</tbody></table></div>${L.length>400?`<p class="note" style="padding:6px 12px;margin:0">İlk 400 maç gösteriliyor (toplam ${L.length}).</p>`:""}</div>` }
-  el.innerHTML=h;
-  el.querySelectorAll("[data-sk]").forEach(r=>r.addEventListener("click",()=>{ SK.sel=r.dataset.sk; SK.vals=null; renderSkorus(); const x=el.querySelector(".card:last-child"); if(x&&x.scrollIntoView) x.scrollIntoView({block:"start"}) }));
-  el.querySelectorAll("[data-skv]").forEach(i=>i.addEventListener("change",()=>{ const v=[...el.querySelectorAll("[data-skv]")].map(x=>parseInt(x.value,10)); SK.vals=v.every(x=>x>0)?v:null; if(SK.vals) SK.sel=""; renderSkorus() }));
-  el.querySelectorAll("#sk-33 [data-u]").forEach(b=>b.addEventListener("click",()=>{ SK.use33=b.dataset.u==="1"; renderSkorus() }));
-  el.querySelectorAll("#sk-mode [data-md]").forEach(b=>b.addEventListener("click",()=>{ SK.mode=+b.dataset.md; renderSkorus() })) }
+function skProg(){ if(!(curTab==="tablo"&&viewKey==="skor")) return; const el=$("countline"); if(el) el.innerHTML=`Skor oranları hesaplanıyor: <b>${Math.round(SK.done/Math.max(1,SK.tot)*100)}%</b> <small>(ilk açılışta sürer, sonra kayıtlı kalır)</small>` }
 const APP_VER="142";
 let toastT=null;
 function toast(msg){ const t=$("toast"); if(!t) return; t.innerHTML=`<span>${SI.check}</span>${esc(msg)}`; t.hidden=false; t.classList.remove("show"); void t.offsetWidth; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>{ t.classList.remove("show"); setTimeout(()=>t.hidden=true,250) },1600) }
