@@ -8660,9 +8660,9 @@ function ttBallVol(M,r){ // r yarıçaplı top içindeki nokta sayısı
 async function ttMatReduce(M,r,budgetMs){ const L=M.length, bi=[], ti=[]; M.forEach((m,i)=>(m===2?bi:ti).push(i)); const c=bi.length, k=ti.length; let N=1; for(const m of M) N*=m;
   let seed=97; const rnd=()=>(seed=seed*16807%2147483647)/2147483647; const t0=performance.now(); let best=null;
   const add3=(b,h,q,mul)=>{ let o=0,pw=1; for(let i=0;i<q;i++){ o+=((Math.floor(b/pw)%3+mul*(Math.floor(h/pw)%3))%3)*pw; pw*=3 } return o };
-  const cand=[]; for(let p=0;p<=Math.min(c,8);p++) for(let q=0;q<=Math.min(k,5);q++){ const G=(1<<p)*3**q; if(G<4||G>1200||G>=N) continue; cand.push([p,q,G]) }
+  const cand=[]; for(let p=0;p<=Math.min(c,8);p++) for(let q=0;q<=Math.min(k,5);q++){ const G=(1<<p)*3**q; if(G<4||G>(ttMatReduce.cap||1200)||G>=N) continue; cand.push([p,q,G]) }
   cand.sort((a,b)=>a[2]-b[2]); if(!cand.length) return null;
-  const per=budgetMs/cand.length; let lastY=performance.now();
+  const only=ttMatReduce.only; if(only){ for(let k=cand.length-1;k>=0;k--) if(!only.includes(cand[k][0]+','+cand[k][1])) cand.splice(k,1) } const per=budgetMs/cand.length; let lastY=performance.now();
   for(const [p,q,G] of cand){ const A=1<<p, B=3**q, tq=performance.now();
     for(let t=0;performance.now()-tq<per;t++){ const G2=[], H3=[];
       const pool2=[]; for(let v=1;v<A;v++) if(v&(v-1)) pool2.push(v); for(let i=pool2.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [pool2[i],pool2[j]]=[pool2[j],pool2[i]] }
@@ -8674,11 +8674,11 @@ async function ttMatReduce(M,r,budgetMs){ const L=M.length, bi=[], ti=[]; M.forE
       const BL=new Array(G); for(let v=0;v<G;v++){ const seen=new Set([v]); let fr=[v]; for(let d=0;d<r;d++){ const nf=[]; for(const x of fr) for(const y of nb[x]) if(!seen.has(y)){ seen.add(y); nf.push(y) } fr=nf } BL[v]=Int32Array.from(seen) }
       const cov=new Int32Array(G), inS=new Uint8Array(G); let unc=G, size=0;
       while(unc>0){ let bv=-1,bs=-1; for(let v=0;v<G;v++){ if(inS[v]) continue; let s=0; for(const x of BL[v]) if(!cov[x]) s++; if(s>bs||(s===bs&&rnd()<0.3)){ bs=s; bv=v } } inS[bv]=1; size++; for(const x of BL[bv]){ if(!cov[x]) unc--; cov[x]++ } }
-      let bsz=size, bS=inS.slice(), T=1.0; const its=Math.min(60000,G*80);
+      let bsz=size, bS=inS.slice(), T=1.0; const its=Math.min(ttMatReduce.mx||60000,G*(ttMatReduce.itm||80));
       for(let it=0;it<its;it++){ const v=Math.floor(rnd()*G), was=inS[v]; let d=0; if(was){ for(const x of BL[v]){ cov[x]--; if(!cov[x]) d++ } inS[v]=0; size-- } else { for(const x of BL[v]){ if(!cov[x]) d--; cov[x]++ } inS[v]=1; size++ }
         const dc=(was?-1:1)+d; if(dc<=0||rnd()<Math.exp(-dc/T)){ unc+=d; if(unc===0&&size<bsz){ bsz=size; bS=inS.slice() } } else { if(was){ for(const x of BL[v]) cov[x]++; inS[v]=1; size++ } else { for(const x of BL[v]) cov[x]--; inS[v]=0; size-- } }
         T=Math.max(0.1,T*0.9998) }
-      const tot=bsz*N/G; if(!best||tot<best.tot) best={tot,p,q,A,B,G2,H3,S:bS};
+      const tot=bsz*N/G; (ttMatReduce.dbg=ttMatReduce.dbg||{})[p+','+q]=Math.min((ttMatReduce.dbg[p+','+q]||1e9),Math.round(tot)); if(!best||tot<best.tot) best={tot,p,q,A,B,G2,H3,S:bS};
       if(performance.now()-lastY>40){ await new Promise(z=>setTimeout(z,0)); lastY=performance.now() } }
     if(performance.now()-t0>budgetMs*1.2) break }
   if(!best) return null;
@@ -8686,6 +8686,34 @@ async function ttMatReduce(M,r,budgetMs){ const L=M.length, bi=[], ti=[]; M.forE
   const st=new Array(L); { let s=1; for(let i=L-1;i>=0;i--){ st[i]=s; s*=M[i] } }
   const out=[]; for(let x=0;x<N;x++){ let a=0, b=0; bi.forEach((i,u)=>{ if(Math.floor(x/st[i])%2) a^=best.G2[u] }); ti.forEach((i,u)=>{ const v=Math.floor(x/st[i])%3; if(v) b=add3(b,best.H3[u],best.q,v) }); if(best.S[a*best.B+b]) out.push(x) }
   return out }
+// kolon sayısını azaltan iyileştirme: kod sayısını bir azalt, kapsanmayan noktaları kodları kaydırarak (tavlama) kapat; kapanırsa tekrar azalt
+async function ttPolish(M,r,K0,budgetMs,onp){ const L=M.length; let N=1; const st=new Array(L); for(let i=L-1;i>=0;i--){ st[i]=N; N*=M[i] }
+  const dig=(p,i)=>Math.floor(p/st[i])%M[i]; const vol=ttBallVol(M,r), cache=N*vol<=6e6?new Array(N):null;
+  const ball=p=>{ if(cache&&cache[p]) return cache[p]; const out=[p]; const rec=(start,depth,q)=>{ if(depth===r) return; for(let i=start;i<L;i++){ const di=dig(q,i); for(let v=0;v<M[i];v++){ if(v===di) continue; const q2=q+(v-di)*st[i]; out.push(q2); rec(i+1,depth+1,q2) } } }; rec(0,0,p); const a=Int32Array.from(out); if(cache) cache[p]=a; return a };
+  let seed=4242; const rnd=()=>(seed=seed*16807%2147483647)/2147483647; const t0=performance.now(); let lastY=t0;
+  let cur=K0.slice(), best=K0.slice(); const cov=new Uint16Array(N); for(const c of cur) for(const q of ball(c)) cov[q]++;
+  let step=1, its=0;
+  while(performance.now()-t0<budgetMs&&cur.length>1){
+    const sv=cur.slice(), svc=cov.slice(); const st2=Math.min(step,cur.length-1);
+    for(let z=0;z<st2;z++){ let bi=0,bl=1e9; for(let i=0;i<cur.length;i++){ let l=0; for(const q of ball(cur[i])) if(cov[q]===1) l++; if(l<bl||(l===bl&&rnd()<.3)){ bl=l; bi=i } }
+      for(const q of ball(cur[bi])) cov[q]--; cur[bi]=cur[cur.length-1]; cur.pop() }
+    let unc=0; for(let q=0;q<N;q++) if(!cov[q]) unc++;
+    const K=cur.length; let T=0.5, it=0, ok=unc===0; const slice=Math.max(300,Math.min(budgetMs*0.25,(budgetMs-(performance.now()-t0))*(step>1?0.35:0.8))), ts=performance.now();
+    while(!ok&&performance.now()-ts<slice&&performance.now()-t0<budgetMs){
+      for(let rep=0;rep<400&&!ok;rep++){ it++;
+        const i=Math.floor(rnd()*K), c=cur[i]; let c2;
+        if(unc>0&&rnd()<.6){ let u=-1; for(let k=0;k<40;k++){ const q=Math.floor(rnd()*N); if(!cov[q]){ u=q; break } } if(u<0){ for(let q=0;q<N;q++) if(!cov[q]){ u=q; break } }
+          const bu=ball(u); c2=bu[Math.floor(rnd()*bu.length)] }
+        else { const j=Math.floor(rnd()*L), d=dig(c,j); let v=Math.floor(rnd()*(M[j]-1)); if(v>=d) v++; c2=c+(v-d)*st[j] }
+        if(c2===c) continue; let d=0; const b1=ball(c), b2=ball(c2);
+        for(const q of b1){ if(--cov[q]===0) d++ } for(const q of b2){ if(cov[q]++===0) d-- }
+        if(d<=0||rnd()<Math.exp(-d/T)){ cur[i]=c2; unc+=d; if(unc===0) ok=true } else { for(const q of b2) cov[q]--; for(const q of b1) cov[q]++ }
+        T=Math.max(0.15,T*0.99999) }
+      if(performance.now()-lastY>40){ if(onp) onp(null,cur.length,"kolon azaltılıyor"); await new Promise(z=>setTimeout(z,0)); lastY=performance.now() } }
+    its+=it;
+    if(ok){ best=cur.slice() } else { cur=sv; cov.set(svc); if(step>1) step=Math.max(1,Math.floor(step/2)); else break } }
+  ttPolish.its=its;
+  return best }
 async function ttReduce(S,r,onp){ const {V,M,N}=ttSysInfo(S); if(!V.length||r<=0) return {kolons:[ttKol(S,V,M,0)],N,r:0};
   if(N>TT_RMAX) throw new Error(`tam sistem ${N.toLocaleString("tr-TR")} kolon, kısaltma için çok büyük (en fazla ${TT_RMAX.toLocaleString("tr-TR")})`);
   const L=V.length, st=new Array(L); { let s=1; for(let i=L-1;i>=0;i--){ st[i]=s; s*=M[i] } }
@@ -8706,6 +8734,7 @@ async function ttReduce(S,r,onp){ const {V,M,N}=ttSysInfo(S); if(!V.length||r<=0
   // ikinci arama (matris yöntemi): daha az kolon bulursa o kullanılır
   if(onp) onp(1,kol.length,"daha az kolonlu çözüm aranıyor");
   try{ const alt=N<=600000?await ttMatReduce(M,r,N>50000?2500:4000):null; if(alt&&alt.length<kol.length){ const c2=new Uint8Array(N); for(const p of alt) for(const q of ball(p)) c2[q]=1; if(c2.every(x=>x)) kol=alt } }catch(e){}
+  try{ if(N<=300000&&kol.length>1){ const pl=await ttPolish(M,r,kol,N>50000?5000:Math.min(9000,2500+N),(f,n,m)=>{ if(onp) onp(1,n,m) }); if(pl.length<kol.length){ const c3=new Uint8Array(N); for(const p of pl) for(const q of ball(p)) c3[q]=1; if(c3.every(x=>x)) kol=pl } } }catch(e){ if(e&&e.message==='iptal') throw e }
   return {kolons:kol.map(p=>ttKol(S,V,M,p,st)),N,r} }
 function ttKol(S,V,M,p,st){ const k=S.map(s=>s[0]); if(!st){ st=new Array(V.length); let s=1; for(let i=V.length-1;i>=0;i--){ st[i]=s; s*=M[i] } } V.forEach((pos,i)=>{ k[pos]=S[pos][Math.floor(p/st[i])%M[i]] }); return k }
 // gerçek ihtimaller: maç olasılıklarıyla 4000 sanal hafta
