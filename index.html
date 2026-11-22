@@ -725,12 +725,16 @@ window.GA_CHAT={
   room:"toto", setRoom:function(r){ this.room=r==="futbol"?"futbol":"toto" }, col:function(r){ return (r||this.room)==="futbol"?"chat_futbol":"chat_messages" },
   admin:function(){ return isAdm() },
   profile:function(){ var u=me(); return F().collection("chat_profiles").doc(u.uid).get().then(function(s){ return s.exists?s.data():null }) },
-  saveProfile:function(nick,av){ var u=me(), db=F(), low=nick.toLowerCase(), old=null;
-    return db.collection("chat_profiles").doc(u.uid).get().then(function(s){ old=s.exists?s.data().nick:null;
-      return db.collection("chat_nicks").doc(low).get() }).then(function(n){ if(n.exists&&n.data().uid!==u.uid){ var e=new Error("nick-taken"); e.code="nick-taken"; throw e }
-      var b=db.batch(); b.set(db.collection("chat_nicks").doc(low),{uid:u.uid});
-      b.set(db.collection("chat_profiles").doc(u.uid),{nick:nick,av:av,ts:firebase.firestore.FieldValue.serverTimestamp()});
-      return b.commit() }).then(function(){ if(old&&old.toLowerCase()!==low) return db.collection("chat_nicks").doc(old.toLowerCase()).delete().catch(function(){}) }) },
+  saveProfile:function(nick,av){ var self=this, vars=[]; function add(x){ if(vars.indexOf(x)<0) vars.push(x) }
+    add(nick.replace(/İ/g,"i").toLowerCase()); add(nick.toLowerCase()); add(nick.replace(/İ/g,"i").replace(/I/g,"i").toLowerCase());
+    function one(low){ var u=me(), db=F(), old=null;
+      return db.collection("chat_profiles").doc(u.uid).get().then(function(s){ old=s.exists?s.data().nick:null;
+        return db.collection("chat_nicks").doc(low).get() }).then(function(n){ if(n.exists&&n.data().uid!==u.uid){ var e=new Error("nick-taken"); e.code="nick-taken"; throw e }
+        var b=db.batch(); b.set(db.collection("chat_nicks").doc(low),{uid:u.uid});
+        b.set(db.collection("chat_profiles").doc(u.uid),{nick:nick,av:av,ts:firebase.firestore.FieldValue.serverTimestamp()});
+        return b.commit() }).then(function(){ if(old&&old.toLowerCase()!==low) return db.collection("chat_nicks").doc(old.toLowerCase()).delete().catch(function(){}) }) }
+    var k=0; function next(){ return one(vars[k]).catch(function(e){ if(e&&e.code==="nick-taken") throw e; k++; if(k<vars.length) return next(); throw e }) }
+    return next() },
   subCfg:function(cb){ return F().collection("settings").doc("chat").onSnapshot(function(s){ cb(s.exists?s.data():{}) },function(){ cb({}) }) },
   subBan:function(cb){ var u=me(); return F().collection("chat_bans").doc(u.uid).onSnapshot(function(s){ var d=s.exists?s.data():null; if(d) d={perm:!!d.perm,until:d.until?ms(d.until):0,why:d.why||""}; cb(d) },function(){ cb(null) }) },
   subMsgs:function(cb,err,lim){ return F().collection(this.col()).orderBy("ts","desc").limit(lim||300).onSnapshot(function(qs){
@@ -9300,9 +9304,12 @@ function tpAvSvg(id,sz){ const n=Math.max(1,Math.min(100,parseInt(String(id).rep
 
 // ===================== TOPLULUK (tek ortak sohbet) · v178 =====================
 const TP_EMO=["⚽","🏆","🔥","👏","💪","😎","😂","🤝","👍","❤️","🎯","🥅","🧤","👑","⭐","💯","🙌","😮","🤔","😢","🤞","🍀","📈","🏟️","🚀","✅","❌","⏱️","🟨","🟥","🥇","🥈","🥉","😁","😅","🙏","🫡","👀","💰","🎉"];
-const TP_DEF={a:["amk","aq","amına","amina","orospu","oç","piç","siktir","sikik","sikeyim","yarrak","yarak","göt","götveren","ibne","pezevenk","kahpe","şerefsiz","gerizekalı","salak","aptal","beyinsiz","embesil","puşt","yavşak","ananı","avradını","sürtük","porno","porn","erotik","xxx","+18","çıplak","seks","sex"],b:["akp","chp","mhp","hdp","dem parti","pkk","ypg","pyd","fetö","isid","deaş","öldüreceğim","gebertirim","geberteceğim","vururum","zenci","gavur","kafir","terörist"],c:["http","www","t.me","wa.me","bit.ly",".com",".net",".org",".xyz",".bet","telegram","whatsapp","papara","iban","kaçak bahis","bonus","dm at","yatırım yap","özelden yaz"]};
+const TP_DEF={a:["amk","aq","amına","amina","orospu","oç","piç","siktir","sikik","sikeyim","yarrak","yarak","göt","götveren","ibne","pezevenk","kahpe","şerefsiz","gerizekalı","salak","aptal","beyinsiz","embesil","puşt","yavşak","ananı","avradını","sürtük","amcık","amcik","sikiş","sikis","sikerim","siktiğimin","taşak","kaltak","orospu çocuğu","oç","mal herif","dangalak","hıyar","pezevenk","ibne","götoş","porno","porn","erotik","xxx","+18","çıplak","seks","sex"],b:["akp","chp","mhp","hdp","dem parti","pkk","ypg","pyd","fetö","feto","isid","isis","daesh","deaş","pjak","kck","dhkpc","dhkp-c","hizbullah","el kaide","elkaide","al qaeda","taliban","ak parti","akparti","iyi parti","zafer partisi","öcalan","ocalan","apo","öldüreceğim","gebertirim","geberteceğim","vururum","zenci","gavur","kafir","terörist"],c:["http","www","t.me","wa.me","bit.ly",".com",".net",".org",".xyz",".bet","telegram","whatsapp","papara","iban","kaçak bahis","bonus","dm at","yatırım yap","özelden yaz"]};
 const TP_WHY=["Küfür / hakaret","Siyasi / nefret / şiddet","Reklam / spam / bağlantı","+18 içerik","Sahte kupon","Kişisel bilgi"];
-const TP_CFGV=3;
+const TP_CFGV=5;
+// yalnız takma adlarda uygulanan ek yasaklar (siyasi kişi / parti / örgüt / lider isimleri)
+const TP_NICKBAD=["erdoğan","erdogan","kılıçdaroğlu","kilicdaroglu","bahçeli","bahceli","imamoğlu","imamoglu","demirtaş","demirtas","özgür özel","akp","chp","mhp","hdp","dem parti","akparti","pkk","ypg","pyd","pjak","kck","dhkpc","feto","fetö","isid","isis","daesh","deaş","hizbullah","taliban","hitler","nazi","faşist","fasist","terör","terorist","terörist","katil","tecavüz","tecavuz","ırkçı","irkci","gavur","kafir","zenci"];
+let TP_NBX=null; function tpNickBad(n){ try{ if(!TP_NBX) TP_NBX=new RegExp(tpRx(TP_NICKBAD),"u"); return TP_NBX.test(n.toLocaleLowerCase("tr")) }catch(e){ return false } }
 const TP_RULES_TXT="📌 Topluluk kuralları\n• Küfür, hakaret, taciz ve nefret söylemi yasak.\n• +18 içerik, siyasi propaganda ve terör övgüsü yasak.\n• Reklam, spam, bağlantı ve kişisel bilgi paylaşımı yasak.\n• Sahte kupon ve sahte kazanç belgesi paylaşmak yasak.\n• Kuponlar yalnız bilgi paylaşımıdır, kazanç garantisi değildir.\nİhlal eden üyeye sohbet yasağı verilir. Keyifli sohbetler!";
 const tpAvHTML=(id,cls="")=>`<span class="tp-av ${cls}">${tpAvSvg(id,cls==="big"?58:44)}</span>`;
 // --- filtre: harf aralarına işaret, harf değiştirme (4=a, 0=o …), tekrar harf
@@ -9310,11 +9317,14 @@ const TP_CL={a:"[aâ4@]",b:"[b8]",c:"[cç]",d:"d",e:"[e3€]",f:"f",g:"[gğ]",h:
 const TP_SEP="[\\s_.,\\-*+'\"~^`|\\\\/]{0,2}";
 function tpWordRx(w){ w=w.toLocaleLowerCase("tr").trim(); if(!w) return ""; const ch=[...w], body=ch.map(c=>TP_CL[c]?TP_CL[c]+"+":c.replace(/[.*+?^${}()|[\]\\\/-]/g,"\\$&")).join(TP_SEP); const alnum=ch.filter(c=>TP_CL[c]).length; return alnum&&alnum<=4&&alnum===ch.length?`(?:^|[^\\p{L}\\p{N}])${body}(?:$|[^\\p{L}\\p{N}])`:body }
 const tpRx=ws=>ws.map(tpWordRx).filter(Boolean).join("|");
+// sunucu (Firestore kuralı) için hafif sürüm: ayraç ve tekrar yok, böylece düzenli ifade küçük kalır (büyük ifade kural değerlendirmesini bozabilir)
+function tpWordRxS(w){ w=w.toLocaleLowerCase("tr").trim(); if(!w) return ""; const ch=[...w], body=ch.map(c=>TP_CL[c]||c.replace(/[.*+?^${}()|[\]\\\/-]/g,"\\$&")).join(""), alnum=ch.filter(c=>TP_CL[c]).length; return alnum&&alnum<=4&&alnum===ch.length?`(?:^|[^a-z0-9çğıöşüâ])${body}(?:$|[^a-z0-9çğıöşüâ])`:body }
+const tpRxS=ws=>[...new Set(ws.map(tpWordRxS).filter(Boolean))].join("|");
 function tpWords(cfg){ const w=(cfg&&cfg.words)||{}; const m=(d,x)=>[...new Set([...d,...(x||[])])]; return {a:m(TP_DEF.a,w.a),b:m(TP_DEF.b,w.b),c:m(TP_DEF.c,w.c)} }
 let TP_RXC=null;
 function tpCheck(text,cfg){ const W=tpWords(cfg), key=JSON.stringify(W); if(!TP_RXC||TP_RXC.k!==key){ TP_RXC={k:key,r:["a","b","c"].map(g=>{ try{ return new RegExp(tpRx(W[g]),"u") }catch(e){ return null } })} }
   const t=String(text||"").toLocaleLowerCase("tr").normalize("NFKC"); const lab=["Küfür / hakaret / +18","Siyasi, şiddet ya da nefret içeriği","Reklam, spam ya da bağlantı"]; for(let i=0;i<3;i++){ const r=TP_RXC.r[i]; if(r&&r.test(t)) return lab[i] } return null }
-const tpRulesCfg=W=>({v:TP_CFGV,words:W,rxA:"(?s).*(?:"+tpRx(W.a)+").*",rxB:"(?s).*(?:"+tpRx(W.b)+").*",rxC:"(?s).*(?:"+tpRx(W.c)+").*"});
+const tpRulesCfg=W=>({v:TP_CFGV,words:W,rxA:"(?s).*(?:"+tpRxS(W.a)+").*",rxB:"(?s).*(?:"+tpRxS(W.b)+").*",rxC:"(?s).*(?:"+tpRxS(W.c)+").*"});
 // --- önizleme için yerel arka uç (kayıt yok); sitede GA_CHAT (Firebase) devreye girer
 function tpLocal(){ let msgs=[], room="toto", store={toto:[],futbol:[]}, subs=new Set(), cfg={open:true}, cs=new Set(), reps=[], bans=[], viol=[], rs=new Set(), bs=new Set(), vs=new Set(), n=0, prof=null; const fire=()=>{ const L=msgs.slice(); subs.forEach(f=>f(L)) };
   return {live:false,setRoom:r=>{ r=r==="futbol"?"futbol":"toto"; store[room]=msgs; room=r; msgs=store[r]; fire() },uid:()=>"onizleme",admin:()=>true,profile:async()=>prof,saveProfile:async(nick,av)=>{ prof={nick,av} },subCfg:cb=>{ cs.add(cb); cb(cfg); return ()=>cs.delete(cb) },subBan:cb=>{ cb(bans.find(b=>b.uid==="onizleme")||null); return ()=>{} },
@@ -9348,13 +9358,13 @@ async function tpAuto(){ if(TP_AUTOBUSY||!TP.adm||!TPB.live) return; TP_AUTOBUSY
 function tpBadge(){ const b=$("tp-adm"); if(b) b.innerHTML=`Yönetim${TP.reps.length?` <em>${TP.reps.length}</em>`:""}` }
 function tpSetup(){ const out=$("tp-out"); if(TP.prof&&TP.prof.av) TP.sel=TP.prof.av; const edit=!!(TP.prof&&TP.prof.nick);
   out.innerHTML=`<div class="tp-setup"><h2>${edit?"Profilini düzenle":"Topluluğa hoş geldin"}</h2><p>Gerçek fotoğraf kullanılmaz. Bir takma ad ve futbol temalı avatar seç; mesajlarında bunlar görünür.</p>
-   <label class="tp-l">Takma ad<input id="tp-nick" maxlength="16" autocomplete="off" placeholder="3–16 harf, rakam ya da _" value="${esc(TP.prof&&TP.prof.nick||"")}"></label>
+   <label class="tp-l">Takma ad<input id="tp-nick" maxlength="20" autocomplete="off" placeholder="3–20 karakter, istediğin gibi" value="${esc(TP.prof&&TP.prof.nick||"")}"></label>
    <div class="tp-selav"><span id="tp-selav">${tpAvHTML(TP.sel,"big")}</span><small>Seçtiğin avatar</small></div>
    <div class="tp-avs">${Array.from({length:100},(_,k)=>"a"+String(k+1).padStart(3,"0")).map(a=>`<button type="button" class="${a===TP.sel?"on":""}" data-av="${a}" aria-label="Avatar ${+a.slice(1)}">${tpAvSvg(a,52)}</button>`).join("")}</div>
    <div class="tp-err" id="tp-serr" hidden></div><button class="tbtn primary" id="tp-ok">Kaydet ve sohbete gir</button></div>`;
   out.querySelectorAll("[data-av]").forEach(b=>b.addEventListener("click",()=>{ TP.sel=b.dataset.av; out.querySelectorAll("[data-av]").forEach(x=>x.classList.toggle("on",x===b)); $("tp-selav").innerHTML=tpAvHTML(TP.sel,"big") }));
-  $("tp-ok").addEventListener("click",async()=>{ const nick=$("tp-nick").value.trim(), er=$("tp-serr"); const bad=!/^[A-Za-z0-9_çğıöşüÇĞİÖŞÜ]{3,16}$/.test(nick)?"Takma ad 3–16 karakter olmalı; yalnız harf, rakam ve _ kullan.":tpCheck(nick,TP.cfg)?"Bu takma ad topluluk kurallarına uygun değil.":""; if(bad){ er.hidden=false; er.textContent=bad; return }
-    const b=$("tp-ok"); b.disabled=true; b.textContent="Kaydediliyor…"; try{ await TPB.saveProfile(nick,TP.sel); TP.prof={nick,av:TP.sel}; renderTopluluk() }catch(e){ b.disabled=false; b.textContent="Kaydet ve sohbete gir"; er.hidden=false; er.textContent=e&&e.code==="nick-taken"?"Bu takma ad başkasında. Başka bir tane dene.":"Kaydedilemedi. Üyeliğin aktif mi ve takma ad kurallara uygun mu kontrol et." } }) }
+  $("tp-ok").addEventListener("click",async()=>{ const nick=$("tp-nick").value.trim(), er=$("tp-serr"); const bad=(!/^[^\/]{3,20}$/.test(nick)||/^__|__$/.test(nick))?"Takma ad 3–20 karakter olmalı ( / ve baştaki/sondaki __ kullanılamaz).":(tpCheck(nick,TP.cfg)||tpNickBad(nick))?"Bu takma ad topluluk kurallarına uygun değil. Küfür, siyasi, terör ve kötü anlamlı isimler kullanılamaz.":""; if(bad){ er.hidden=false; er.textContent=bad; return }
+    const b=$("tp-ok"); b.disabled=true; b.textContent="Kaydediliyor…"; try{ await TPB.saveProfile(nick,TP.sel); TP.prof={nick,av:TP.sel}; renderTopluluk() }catch(e){ b.disabled=false; b.textContent="Kaydet ve sohbete gir"; er.hidden=false; er.textContent=e&&e.code==="nick-taken"?"Bu takma ad başkasında. Başka bir tane dene.":"Kaydedilemedi ("+(e&&(e.code||e.message)||"hata")+"). Üyeliğin aktif mi ve takma ad kurallara uygun mu kontrol et. Sorun sürerse bu kodu yöneticiye ilet." } }) }
 function tpFrame(){ $("tp-out").innerHTML=`<div class="tp-wrap">
   ${TPB.live?"":`<div class="tp-prev">Önizleme modu: mesajlar yalnız bu sayfada durur, kaydedilmez. Sitede gerçek zamanlı ve kalıcıdır.</div>`}
   <div class="tp-rooms" role="tablist">${[["toto","Toto Analiz Divanı"],["futbol","Futbol Analiz Divanı"]].map(([r,l])=>`<button type="button" data-tproom="${r}" aria-pressed="${TP.room===r}">${l}</button>`).join("")}</div>
