@@ -8407,6 +8407,7 @@ function ttGarHTML(W,S,rows,cols){ const key=totoCur+"|"+ttPlan+"|"+S.map(s=>s.j
      <div class="h15-gd">${gd.map((v,q)=>`<div><span>${12+q}-Giden Kupon Sayıları :</span><b>${N(v)}</b></div>`).join("")}</div>
      <p class="note" style="margin:6px 2px 0">Giden kupon: o kolonun, sonucu belli maçlardaki yanlışlarına göre ulaşabileceği en yüksek doğru sayısı (15 − yanlış). Devam eden: en az 12 doğruya hâlâ ulaşabilen kolonlar.</p>
      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><button class="tbtn primary" id="tt-gartxt">TXT indir</button><button class="tbtn" id="tt-garcopy">Tüm kolonları kopyala</button><button class="tbtn" id="tt-garsave">Kuponlarıma kaydet</button></div>
+     ${ttByPanel(FA)}
      ${G.yz?`<div class="ttgk"><b>Yüzdesel sistem · garanti yok</b><span>Bu ${N(G.kol.length)} kolon, maçların hesaplanan ihtimallerine göre <b>${G.g} ve üstü doğru</b> yapma ihtimalini en yükseğe çıkaracak şekilde seçildi. Bankoların tutmama ihtimali dahil, kesin hesapla:</span></div>
      <div class="listcard" style="margin-top:8px"><div style="overflow-x:auto"><table class="g st2"><thead><tr><th style="text-align:left">Olasılık</th><th>15</th><th>14+</th><th>13+</th><th>12+</th></tr></thead><tbody>
       <tr><td style="text-align:left">Tam sistem (${N(cols)} kolon)</td>${Ffull.map(v=>`<td>${ttPct(v)}</td>`).join("")}</tr>
@@ -9003,6 +9004,57 @@ function ttBudgetPlan(rows,budget,g){ const r=15-g, ok=rows.filter(x=>x.A), no=r
     const S=rows.map(x=>sel.get(x)||[0,1,2]); const pin=S.reduce((a,s,i)=>a*(rows[i].A?s.reduce((q,j)=>q+rows[i].A.p[j],0):1),1);
     if(!best||pin>best.pin) best={S,pin,est,N,nb,nc,nk:nk+no} }
   return best }
+let ttBy=(()=>{ const d={bayi:"nesine",gec:300,bas:1,deneme:true,ayar:{}}; try{ const r=JSON.parse(localStorage.getItem("ga_bayi_ayar")||"null"); if(r&&typeof r==="object") Object.assign(d,r) }catch(e){} return d })();
+const TT_BAYI={nesine:"Nesine",bilyoner:"Bilyoner",misli:"Misli",iddaa:"İddaa"};
+function ttBySave(){ try{ localStorage.setItem("ga_bayi_ayar",JSON.stringify(ttBy)) }catch(e){} }
+function ttByCfg(){ const a=(ttBy.ayar[ttBy.bayi]=ttBy.ayar[ttBy.bayi]||{}); return {mac:a.mac||"",sec:a.sec||"",tem:a.tem||"",ekl:a.ekl||""} }
+// Yardımcı betik: kullanıcının kendi tarayıcısında, açık bayi sayfasında çalışır. Ödeme / onay adımına ASLA dokunmaz; yalnız 1-0-2 kutularını işaretleyip "kupona ekle" der.
+function ttByScript(kol){ const C=ttByCfg(), lab=["1","0","2"], satirlar=kol.map(k=>k.map(j=>lab[j]).join("")).join(","), gec=Math.max(50,Math.round(+ttBy.gec)||300), bas=Math.max(1,Math.round(+ttBy.bas)||1);
+  const L=[
+"// Güçlü Analiz · Bayi Form Doldurma Yardımcısı ("+TT_BAYI[ttBy.bayi]+") · "+kol.length+" kolon",
+"// Ödeme, satın alma ya da onay düğmesine dokunmaz. Son adım her zaman sende.",
+"(async()=>{",
+"const AYAR="+JSON.stringify({bayi:TT_BAYI[ttBy.bayi],macSatirlari:C.mac,secenek:C.sec,temizle:C.tem,kuponaEkle:C.ekl,gecikmeMs:gec,baslaKolon:bas,deneme:!!ttBy.deneme})+";",
+"const KOLON=\""+satirlar+"\".split(\",\");",
+"const wait=ms=>new Promise(r=>setTimeout(r,ms)), q=(s,r)=>[...(r||document).querySelectorAll(s)], MAP={\"1\":0,\"0\":1,\"2\":2};",
+"if(!AYAR.macSatirlari||!AYAR.secenek||!AYAR.kuponaEkle){ alert(\"Önce AYAR bölümündeki seçicileri doldur (macSatirlari, secenek, kuponaEkle).\"); return }",
+"let dur=false; const box=document.createElement(\"div\"); box.style.cssText=\"position:fixed;z-index:2147483647;right:10px;top:10px;background:#0B0B0E;color:#FFD98A;border:1px solid #E7B14A;border-radius:12px;padding:10px 12px;font:600 13px system-ui,sans-serif;max-width:260px;box-shadow:0 8px 24px rgba(0,0,0,.5)\";",
+"const msg=document.createElement(\"div\"), bar=document.createElement(\"div\"), fill=document.createElement(\"div\"), btn=document.createElement(\"button\");",
+"bar.style.cssText=\"height:6px;background:#2A2410;border-radius:4px;margin:6px 0;overflow:hidden\"; fill.style.cssText=\"height:100%;width:0;background:#E7B14A\"; bar.appendChild(fill);",
+"btn.textContent=\"Durdur\"; btn.style.cssText=\"background:#C9972F;color:#14110A;border:0;border-radius:8px;padding:6px 12px;font-weight:800;cursor:pointer\"; btn.onclick=()=>{dur=true};",
+"box.append(msg,bar,btn); document.body.appendChild(box);",
+"const say=(t,p)=>{ msg.textContent=t; if(p!=null) fill.style.width=p+\"%\" };",
+"let k=AYAR.baslaKolon-1, yapilan=0;",
+"try{",
+" for(;k<KOLON.length;k++){",
+"  if(dur) break;",
+"  const rows=q(AYAR.macSatirlari); if(rows.length<15){ say(\"Hata: \"+rows.length+\" maç satırı bulundu, 15 olmalı. Seçiciyi kontrol et. Kaldığın kolon: \"+(k+1)); return }",
+"  const c=KOLON[k];",
+"  for(let i=0;i<15;i++){ const b=q(AYAR.secenek,rows[i])[MAP[c[i]]]; if(!b){ say(\"Hata: \"+(i+1)+\". maçta kutu bulunamadı. Kaldığın kolon: \"+(k+1)); return } b.click(); await wait(AYAR.gecikmeMs/3) }",
+"  say(\"Kolon \"+(k+1)+\" / \"+KOLON.length+\" işaretlendi\",Math.round((k+1)/KOLON.length*100));",
+"  if(AYAR.deneme){ say(\"DENEME: \"+(k+1)+\". kolon işaretlendi, kupona EKLENMEDİ. Doğruysa kodda deneme:false yapıp yeniden çalıştır.\"); return }",
+"  const ek=document.querySelector(AYAR.kuponaEkle); if(!ek||ek.disabled){ say(\"Hata: kupona ekle düğmesi yok ya da pasif. Kaldığın kolon: \"+(k+1)); return }",
+"  ek.click(); yapilan++; await wait(AYAR.gecikmeMs);",
+"  if(AYAR.temizle){ const t=document.querySelector(AYAR.temizle); if(t){ t.click(); await wait(AYAR.gecikmeMs/2) } }",
+" }",
+" say((dur?\"Durduruldu. \":\"Bitti. \")+yapilan+\" kolon kupona eklendi. Devam için baslaKolon: \"+(k+1)+\". Ödeme / onay adımı sende.\")",
+"}catch(e){ say(\"Hata: \"+(e&&e.message||e)+\" · kaldığın kolon: \"+(k+1)) }",
+"})();"];
+  return L.join("\n") }
+function ttByPanel(FA){ const C=ttByCfg(), I=(k,ph,v,w)=>`<input data-by="${k}" placeholder="${ph}" value="${esc(String(v))}" style="width:${w||"100%"};box-sizing:border-box">`;
+  return `<details class="h15-yz" id="tt-by"><summary class="h15-bar" style="cursor:pointer">Yasal Bayide Form Doldurma Yardımcısı</summary>
+   <p class="h15-yzn">Tüm kolonları (sınırsız, paket bölmeden) açık bayi sayfasında <b>1 - 0 - 2</b> kutularına sırayla işaretleyip kupona ekleyen bir kod üretir. Kod <b>ödeme ya da onay düğmesine basmaz</b>; son adım sende. Bayi sayfaları değişebildiği için kutu adreslerini (seçicileri) sen girersin: bayi sayfasında bir kutuya sağ tık → İncele. Bilgisayar tarayıcısında, sayfadaki konsola yapıştırarak çalışır; telefon tarayıcısında çalışmaz.</p>
+   <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><select id="tt-by-s" class="ssel">${Object.keys(TT_BAYI).map(k=>`<option value="${k}" ${ttBy.bayi===k?"selected":""}>${TT_BAYI[k]}</option>`).join("")}</select>
+    <span class="note"><b>Gecikme (ms)</b> ${I("gec","300",ttBy.gec,"70px")}</span><span class="note"><b>Kaçıncı kolondan</b> ${I("bas","1",ttBy.bas,"70px")}</span></div>
+   <div style="display:grid;gap:6px;margin-top:8px">
+    <label class="note"><b>macSatirlari</b> · 15 maç satırı ${I("mac","örn. .match-row",C.mac)}</label>
+    <label class="note"><b>secenek</b> · satırdaki 1, 0, 2 kutuları (bu sırayla) ${I("sec","örn. .odd-btn",C.sec)}</label>
+    <label class="note"><b>kuponaEkle</b> · kupona ekle düğmesi ${I("ekl","örn. .add-coupon",C.ekl)}</label>
+    <label class="note"><b>temizle</b> · isteğe bağlı, her kolondan sonra seçimi silen düğme ${I("tem","boş bırakabilirsin",C.tem)}</label>
+   </div>
+   <label class="h15-yzc" style="margin-top:6px"><input type="checkbox" id="tt-by-d" ${ttBy.deneme?"checked":""}><span>Deneme modu (önerilen)<small>Yalnızca ilk kolonu işaretler, kupona eklemez. Her şey doğruysa bu kutuyu kapatıp kodu yeniden kopyala.</small></span></label>
+   <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap;align-items:center"><button type="button" class="tbtn primary" id="tt-by-cp">Yardımcı kodu kopyala</button><small class="h15-yzt" id="tt-by-i">${FA.n.toLocaleString("tr-TR")} kolon kodun içine girer${FA.on?" (filtreli)":""}. Sayfada kaçıncı kolonda olduğunu küçük bir çubuk gösterir, Durdur düğmesi vardır.</small></div>
+   <small class="note" style="display:block;margin-top:6px">Bayilerin kullanım şartları otomatik işleme izin vermeyebilir; kullanmadan önce kendi hesabın için kontrol et. Kupon sınırları bayinin kendi sistemine bağlıdır.</small></details>` }
 let ttFlt={xmin:"",xmax:"",dmin:"",dmax:"",bt:"",mk:""}, ttFltFull=null;
 function ttFltNum(v,lo,hi){ const a=String(v).trim(); if(a==="") return null; const n=Math.round(+String(a).replace(",",".")); return (isFinite(n)&&n>=lo&&n<=hi)?n:null }
 // Akıllı filtre: önce X / 2 adet aralığı, sonra bütçe ya da kolon sınırı (en uç kolonlar önce elenir). Orijinal kolonlar değişmez, yalnız görünüm ve işlemler filtrelenir.
@@ -9124,6 +9176,11 @@ function ttBind(){ const el=$("toto-out");
   const gm=$("tt-garmore"); if(gm) gm.addEventListener("click",()=>{ ttGarShow+=ttGarShow<50?40:200; const y=window.scrollY; Promise.resolve(renderToto()).then(()=>window.scrollTo(0,y)) });
   el.querySelectorAll("[data-flt]").forEach(i=>i.addEventListener("input",()=>{ ttFlt[i.dataset.flt]=i.value; ttFltLive() }));
   { const fc=$("tt-fltclr"); if(fc) fc.addEventListener("click",()=>{ ttFlt={xmin:"",xmax:"",dmin:"",dmax:"",bt:"",mk:""}; el.querySelectorAll("[data-flt]").forEach(i=>i.value=""); ttFltLive() }) }
+  { const bs=$("tt-by-s"); if(bs) bs.addEventListener("change",()=>{ ttBy.bayi=bs.value; ttBySave(); const C=ttByCfg(); el.querySelectorAll("[data-by]").forEach(i=>{ const k=i.dataset.by; if(["mac","sec","ekl","tem"].includes(k)) i.value=C[k] }) });
+    el.querySelectorAll("[data-by]").forEach(i=>i.addEventListener("input",()=>{ const k=i.dataset.by; if(k==="gec"||k==="bas") ttBy[k]=i.value; else { (ttBy.ayar[ttBy.bayi]=ttBy.ayar[ttBy.bayi]||{})[k]=i.value } ttBySave() }));
+    const bd=$("tt-by-d"); if(bd) bd.addEventListener("change",()=>{ ttBy.deneme=bd.checked; ttBySave() });
+    const bc=$("tt-by-cp"); if(bc) bc.addEventListener("click",async()=>{ const AK=ttAktif(); if(!AK.kol.length){ toast("Aktarılacak kolon yok"); return } const C=ttByCfg(); if(!C.mac||!C.sec||!C.ekl){ toast("Önce macSatirlari, secenek ve kuponaEkle kutularını doldur"); return }
+      const kod=ttByScript(AK.kol); try{ await navigator.clipboard.writeText(kod); toast(AK.kol.length.toLocaleString("tr-TR")+" kolonluk kod kopyalandı") }catch(e){ prompt("Kodu kopyala:",kod) } }) }
   const gc=$("tt-garcopy"); if(gc) gc.addEventListener("click",async()=>{ const Wc=TOTO.weeks[totoCur]; if(!ttGarRes||!Wc) return; const AK=ttAktif(), txt=`SPOR TOTO ${Wc.hafta?Wc.hafta+". hafta":Wc.name} · ${ttGarRes.yz?"yüzdesel "+ttGarRes.g+"+":ttGarRes.g+" garantili"}${AK.on?" (filtreli)":""} · ${AK.kol.length} kolon\nMaçlar: `+Wc.maclar.map(t=>t.no+"."+t.ev+"-"+t.dep).join(" | ")+"\n"+AK.kol.map((k,i)=>(i+1)+": "+k.map(j=>TOTO_LAB[j]).join(" ")).join("\n");
     try{ await navigator.clipboard.writeText(txt); toast(AK.kol.length+" kolon kopyalandı") }catch(e){ prompt("Kolonları kopyala:",txt) } });
   const gsF=async()=>{ const Wc=TOTO.weeks[totoCur]; if(!ttGarRes||!Wc) return; if(ttGarRes.saved){ toast("Bu kupon zaten Kuponlarım'da"); return } const AK=ttAktif(); if(!AK.kol.length){ toast("Kaydedilecek kolon kalmadı"); return } if(AK.kol.length>4000){ toast("4.000 kolondan büyük sistem kaydedilemez; kopyala"); return }
