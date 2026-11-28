@@ -768,6 +768,13 @@ window.GA_ADM={live:true,
 })();
 </script>
 
+<style id="gl-css">.gl-b{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:9px;font:700 11.5px/1.5 var(--cond,system-ui);background:rgba(128,128,128,.18)}.gl-b:empty{display:none}
+.gl-b.live{background:#C62828;color:#fff;animation:glp 1.6s ease-in-out infinite}.gl-b.fin{background:#1B5E20;color:#fff}.gl-b.off{background:#6D4C41;color:#fff}
+@keyframes glp{50%{opacity:.72}}@media (prefers-reduced-motion:reduce){.gl-b.live{animation:none}}
+.gl-bd{padding:12px;margin:0 10px 10px}.gl-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}.gl-top small{opacity:.75}
+.gl-l{margin-top:8px;padding-top:8px;border-top:1px solid var(--line,rgba(128,128,128,.25))}.gl-l:first-of-type{border-top:0;margin-top:0;padding-top:0}.gl-t{display:flex;justify-content:space-between;gap:8px;font-size:13px}.gl-t span{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.gl-g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:6px}.gl-c{display:grid;justify-items:center;padding:6px 2px;border-radius:10px;background:var(--surface2,rgba(128,128,128,.12));border:1px solid var(--line,rgba(128,128,128,.25))}
+.gl-c small{font-size:10.5px;opacity:.8}.gl-c b{font:800 17px var(--cond,system-ui)}.gl-c.on{border-color:#2E7D32}.gl-c.on b{color:#2E7D32}.gl-c.dead b{color:#C62828}.gl-s{margin-top:6px;font-size:12px}</style>
 </head><body>
 <title>Güçlü Analiz · Futbol veri analizi</title>
 <meta name="description" content="Güçlü Analiz: bülten açılış oranlarını binlerce oynanmış maçın sonucuyla karşılaştıran futbol istatistik ve veri analizi platformu.">
@@ -7946,11 +7953,55 @@ async function totoFeedCheck(force){ if(totoFeedBusy||!db||!totoLoaded) return; 
     if(res.created||res.changed){ if(res.created) totoCur=res.id; await saveToto(false); toast(res.created?"Yeni Spor Toto bülteni otomatik yüklendi!":"Spor Toto oynanma yüzdeleri güncellendi"); if(!$("p-toto").hidden) await renderToto() }
   }catch(e){} finally{ totoFeedBusy=false } }
 setTimeout(()=>totoFeedCheck(),5000); setInterval(()=>{ if(document.visibilityState==="visible") totoFeedCheck(true) },15*60000);
+// ---- v222: canlı skor rozetleri + Kalan İkramiye Panosu (veri: ./canli-skorlar.json, API-Football'a istek ATMAZ) ----
+let GA_LIVE=null, glBusy=false, glLast=0, glCtx=null; const glMemo=new Map();
+const GL_FIN=["FT","AET","PEN"], GL_RUN=["1H","2H","ET","BT","P","LIVE"], GL_NO=["CANC","ABD","AWD","WO"], GL_WAIT=["NS","TBD"];
+const glOut=(a,b)=>a==null||b==null?null:a>b?"1":a<b?"2":"X";
+// Spor Toto maçını dosyadaki maçla eşle (iki takım da benzer, tarih ±1 gün)
+function glFind(t){ const L=GA_LIVE&&GA_LIVE.maclar; if(!L||!L.length) return null; const k=t.ev+"|"+t.dep+"|"+(t.tarih||"")+"|"+GA_LIVE.guncelleme; if(glMemo.has(k)) return glMemo.get(k);
+  let best=null, bs=0; for(const f of L){ const a=simT(t.ev,f.ev), b=simT(t.dep,f.dep); if(!(a>=0.6&&b>=0.6)) continue;
+    if(t.tarih&&f.ts){ const fd=new Date(f.ts*1000).toLocaleDateString("sv-SE",{timeZone:"Europe/Istanbul"}); if(Math.abs(dayDiff(fd,t.tarih))>1) continue }
+    if(a+b>bs){ bs=a+b; best=f } }
+  glMemo.size>400&&glMemo.clear(); glMemo.set(k,best); return best }
+// Durum: txt = rozet metni, fin = bitti, res = (bitmişse) kesin sonuç, prov = (canlıysa) şu anki sonuç
+function glState(f){ if(!f) return null; const st=f.d, sc=(f.es!=null&&f.ds!=null)?f.es+"-"+f.ds:"";
+  if(GL_FIN.includes(st)){ const r=glOut(f.e90!=null?f.e90:f.es,f.e90!=null?f.d90:f.ds); return {k:"fin",txt:"MS | "+sc,fin:true,res:r} }
+  if(st==="HT") return {k:"live",txt:"İY | "+sc,prov:glOut(f.es,f.ds)};
+  if(GL_RUN.includes(st)){ let dk=+f.dk||0, cap=st==="1H"?45:st==="ET"?120:90; const base=Date.parse(GA_LIVE.guncelleme)||Date.now(); const ex=Math.max(0,Math.floor((Date.now()-base)/60000)); const v=Math.min(dk+ex,cap);
+    return {k:"live",txt:(v>=cap&&st!=="ET"?cap+"+":v)+"' | "+sc,prov:glOut(f.es,f.ds)} }
+  if(st==="PST") return {k:"off",txt:"Ertelendi"}; if(GL_NO.includes(st)||st==="SUSP"||st==="INT") return {k:"off",txt:st==="SUSP"||st==="INT"?"Durdu":"İptal"};
+  if(GL_WAIT.includes(st)) return {k:"wait",txt:"Bekliyor"}; return null }
+const glBadge=(t,i)=>{ const S=glState(glFind(t)); return `<span class="gl-b${S?" "+S.k:""}" data-gl="${i}">${S&&S.k!=="wait"?esc(S.txt):""}</span>` };
+// Kolon listeleri: şu an üretilen sistem + bu haftanın kayıtlı garantili sistemleri
+function glLists(W,key){ const out=[];
+  if(ttGarRes&&key&&ttGarRes.key===key){ const FA=ttAktif(); out.push({ad:"Şu an ürettiğin "+(ttGarRes.yz?"yüzdesel sistem":ttGarRes.g+" garantili sistem")+(FA.on?" (filtreli)":""),kol:FA.kol}) }
+  (W.gar||[]).forEach(x=>{ if(x&&Array.isArray(x.kol)) out.push({ad:x.ad,kol:x.kol.map(c=>Array.from(c).map(ch=>TOTO_LAB.indexOf(ch)))}) });
+  return out }
+function glCount(kol,res){ const c={n:kol.length,a15:0,a14:0,a13:0,a12:0,dead:0}; for(const k of kol){ let y=0; for(let j=0;j<15;j++) if(res[j]!=null&&res[j]!==k[j]) y++;
+    if(y===0) c.a15++; if(y<=1) c.a14++; if(y<=2) c.a13++; if(y<=3) c.a12++; else c.dead++ } return c }
+const glRI=r=>r==null?null:RES_I[r];
+function glBoardInner(W,key){ const lists=glLists(W,key); if(!lists.length) return `<p class="note" style="margin:0">Kolon ürettiğinde ya da kaydettiğinde, maçlar bittikçe 15 / 14 / 13 / 12 ihtimali süren ve ölü kolon sayıları burada görünür.</p>`;
+  const sk=[], lv=[]; let fin=0, run=0;
+  const kes=W.maclar.map((t,i)=>{ const S=glState(glFind(t)); let r=t.res||totoRes(t); if(!r&&S&&S.fin) r=S.res; const prov=!r&&S&&S.prov?S.prov:null; if(r) fin++; else if(prov) run++; sk[i]=glRI(r); lv[i]=glRI(r||prov); return r });
+  const N=v=>v.toLocaleString("tr-TR"), cell=(l,v,c)=>`<div class="gl-c${c||""}"><small>${l}</small><b>${N(v)}</b></div>`;
+  return `<div class="gl-top"><b>Kalan İkramiye Panosu</b><small>${fin}/15 maç bitti${run?` · ${run} maç canlı`:""}${GA_LIVE?"":" · canlı skor dosyası yok"}</small></div>`+lists.map(L=>{ const A=glCount(L.kol,sk), B=glCount(L.kol,lv);
+    return `<div class="gl-l"><div class="gl-t"><span>${esc(L.ad)}</span><small>${N(A.n)} kolon</small></div>
+     <div class="gl-g">${cell("15 süren",A.a15,A.a15?" on":"")}${cell("14 süren",A.a14,A.a14?" on":"")}${cell("13 süren",A.a13,A.a13?" on":"")}${cell("12 süren",A.a12,A.a12?" on":"")}${cell("Ölü",A.dead,A.dead?" dead":"")}</div>
+     ${run?`<div class="gl-s">Canlı skorlar böyle biterse ihtimali süren: <b>15: ${N(B.a15)}</b> · <b>14: ${N(B.a14)}</b> · <b>13: ${N(B.a13)}</b> · <b>12: ${N(B.a12)}</b> · ölü ${N(B.dead)}</div>`:""}</div>` }).join("")+`<small class="note" style="display:block;margin-top:6px">İhtimali süren: kolonun, biten maçlardaki yanlışlarına göre hâlâ ulaşabileceği doğru sayısı (yanlış ≤ 0 / 1 / 2 / 3). Ölü: 12 doğruya artık ulaşamaz.${GA_LIVE?" Skorlar yaklaşık 15 dakikada bir yenilenir.":""}</small>` }
+function glBoardHTML(W,S){ if(!W||W.maclar.length!==15) return ""; const key=totoCur+"|"+ttPlan+"|"+S.map(s=>s.join("")).join(","); glCtx={id:totoCur,key};
+  return `<div class="gl-bd card" id="gl-board">${glBoardInner(W,key)}</div>` }
+// Ekranı yeniden çizmeden yerinde güncelle (yazdığın filtre/kutular bozulmasın)
+function glRefresh(){ const W=glCtx&&TOTO.weeks[glCtx.id]; if(!W||$("p-toto").hidden) return;
+  document.querySelectorAll("[data-gl]").forEach(e=>{ const t=W.maclar[+e.dataset.gl]; if(!t) return; const S=glState(glFind(t)); e.className="gl-b"+(S?" "+S.k:""); e.textContent=S&&S.k!=="wait"?S.txt:"" });
+  const b=$("gl-board"); if(b&&glCtx.id===totoCur) b.innerHTML=glBoardInner(W,glCtx.key) }
+async function glFetch(force){ if(glBusy||(!force&&Date.now()-glLast<20000)) return; glBusy=true; glLast=Date.now();
+  try{ const r=await fetch("./canli-skorlar.json?t="+Date.now(),{cache:"no-store"}); if(!r.ok) return; const F=await r.json(); if(!F||F.version!==1||!Array.isArray(F.maclar)) return; GA_LIVE=F; glRefresh() }catch(e){} finally{ glBusy=false } }
+setInterval(()=>{ if(document.visibilityState==="visible"&&$("p-toto")&&!$("p-toto").hidden) glFetch(true) },60000);
 // --- ekran ---
 let ttSysLoaded=false;
 function ttPushNav(){ const st={totoTab,ttKD,totoCur,ttPlan,ttCmp,y:window.scrollY}; navSub(()=>{ totoTab=st.totoTab; ttKD=st.ttKD; totoCur=st.totoCur; ttPlan=st.ttPlan; ttCmp=st.ttCmp; renderToto().then(()=>window.scrollTo(0,st.y)) }) }
 async function renderToto(){
-  if($("p-toto").hidden) return; if(!TT_LIB2_OBJ) setTimeout(ttLibInit,0); await loadToto(); totoFeedCheck();
+  if($("p-toto").hidden) return; if(!TT_LIB2_OBJ) setTimeout(ttLibInit,0); await loadToto(); totoFeedCheck(); glFetch();
   if(!ttSysLoaded&&db){ ttSysLoaded=true; try{ const d=await db.doc("settings/sistem").get(); const v=d.exists&&+d.data().ttBedel; if(v>0) ttBedel=String(v) }catch(e){} } const el=$("toto-out");
   const ids=Object.keys(TOTO.weeks).sort((a,b)=>(TOTO.weeks[b].tarih||"").localeCompare(TOTO.weeks[a].tarih||"")); if(totoCur&&!TOTO.weeks[totoCur]) totoCur=null; if(!totoCur&&ids.length) totoCur=ids[0];
   const W=totoCur?TOTO.weeks[totoCur]:null; if(W&&W.maclar&&totoRelink(W)) saveToto(false);
@@ -8474,10 +8525,10 @@ function ttHaftaHTML(W,ids){
     if(LV.length) bans+=`<div class="nt-info">${NT_IC.info}<span>${LV.length}/15 maçta <b>Nesine güncel oranı</b> kullanılıyor (son çekim ${new Date(last).toLocaleString("tr-TR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}).${K&&last>K.at&&!(ttKick(W)&&new Date(ttKick(W))<new Date())?` Kupon bu oranlardan <b>önce</b> kuruldu; oynamadan önce <b>Güçlü Analiz ile doldur</b>'a bas.`:""}</span></div>`; }
   if(ttDV>0) bans+=ttHasOyn(W)?`<div class="nt-info">${NT_IC.info}<span><b>Değer modu açık</b>: oranın verdiği ihtimale göre halkın küçümsediği sonuçlar (★) çifteye öncelikli giriyor; herkesin oynadığı yere boşuna kolon harcanmıyor.</span></div>`:`<div class="nt-ban">Değer modu için bu haftanın <b>oynanma oranları</b> gerekli (${W.maclar.filter(t=>ttOynQ(t)).length}/15 girildi). Yönetici araçları › <b>Oynanma oranlarını gir</b>. Girilmezse kupon yalnız isabete göre kurulur.</div>`;
   if(warn) bans+=`<div class="nt-ban bad">${warn==="alt"?`Bu bütçenin alt sınırına (${TT_PLAN[ttPlan].min.toLocaleString("tr-TR")} TL) uyan bir dağılım bulunamadı; kupon alt sınırın altında kuruldu.`:`Oranı olmayan maçlar yüzünden kupon bütçenin üst sınırını aşıyor.`}</div>`;
-  { const SA=S4[0]; h+=bans+`<div class="pg-list">${rows.map((r,i)=>{ const t=r.t, m=r.m, d=t.tarih||(m&&m.tarih), sa=t.saat||(m&&m.saat)||"", A=r.A, real=r.res?RES_I[r.res]:null;
+  { const SA=S4[0]; h+=bans+glBoardHTML(W,S)+`<div class="pg-list">${rows.map((r,i)=>{ const t=r.t, m=r.m, d=t.tarih||(m&&m.tarih), sa=t.saat||(m&&m.saat)||"", A=r.A, real=r.res?RES_I[r.res]:null;
       const pv=lock?null:pm==="oyn"&&t.oyn&&t.oyn["1"]!=null?[t.oyn["1"],t.oyn.x,t.oyn["2"]].map(v=>+v/100):A?A.p:null, top=pv?[0,1,2].sort((a,b)=>pv[b]-pv[a])[0]:-1;
       const qv=A&&ttOynQ(t), dvj=j=>qv&&A.p[j]/qv[j]>=1.5, sel=SA[i]||[];
-      return `<article class="pg-m${real!=null?(sel.includes(real)?" ok":" bad"):""}"><span class="pg-n">${t.no}</span><div class="pg-i"><span class="nt-tm pg-tm" data-ttx="${i}" role="button" tabindex="0"><b>${esc(ttTitle(t.ev))}</b><i>-</i><b>${esc(ttTitle(t.dep))}</b>${r.res?`<em class="rs">${r.res}</em>`:""}${t.link==="check"?`<i class="nt-w">eşleşme kontrol</i>`:""}</span><small>${d?`${ttDMY(d)} ${esc(sa)}`:"–"}</small></div>
+      return `<article class="pg-m${real!=null?(sel.includes(real)?" ok":" bad"):""}"><span class="pg-n">${t.no}</span><div class="pg-i"><span class="nt-tm pg-tm" data-ttx="${i}" role="button" tabindex="0"><b>${esc(ttTitle(t.ev))}</b><i>-</i><b>${esc(ttTitle(t.dep))}</b>${r.res?`<em class="rs">${r.res}</em>`:""}${t.link==="check"?`<i class="nt-w">eşleşme kontrol</i>`:""}</span><small>${d?`${ttDMY(d)} ${esc(sa)}`:"–"}${glBadge(t,i)}</small></div>
        <div class="pg-b">${TOTO_LAB.map((l,j)=>{ const on=sel.includes(j); return `<button type="button" data-tts="${i}|${j}|A" aria-pressed="${on}" aria-label="${t.no}. maç ${l}" class="pgk${on?" on":""}${real===j?(on?" hit":" miss"):""}${dvj(j)?" dv":""}"><b>${l}</b><em class="${j===top?"top":""}">${pv?"%"+Math.round(pv[j]*100):lock?"🔒":"–"}</em></button>` }).join("")}</div></article>
        <div class="nt-why pg-why" id="ntw-${i}" hidden>${esc(ttWhy(r,SA[i]||[]))}${t.oyn&&t.oyn["1"]!=null?` Oynanma oranı (girilen): 1 %${Math.round(t.oyn["1"])}, X %${Math.round(t.oyn.x)}, 2 %${Math.round(t.oyn["2"])}.`:""}${m?` <button class="lnk" data-pred="${esc(m.id)}">Maç ayrıntısı</button>`:""}${t.link==="check"?` <button class="lnk" data-ttok="${t.no}">Eşleşme doğru</button>`:""}${t.resChk?` <button class="lnk" data-ttres="${t.no}|${t.resChk}">Sonuç ${t.resChk} kabul</button>`:""}</div>` }).join("")}</div>`;
     const tipsA=SA.map(s=>s.length===1?"B":s.length===2?"Ç":s.length===3?"K":""), plA=rows.filter(r=>r.res), hitA=rows.filter((r,i)=>r.res&&(SA[i]||[]).includes(RES_I[r.res])).length;
