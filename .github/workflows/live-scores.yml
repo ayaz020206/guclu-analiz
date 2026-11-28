@@ -1,0 +1,53 @@
+name: live-scores
+
+# Günlük istek bütçesi (UTC günü; API-Football ücretsiz plan = 100 istek):
+#   15 10-12 * * *   -> TSİ 13:15, 14:15, 15:15            =  3 istek
+#   */5 13-20 * * *  -> TSİ 16:00-23:55, 5 dakikada bir     = 96 istek
+#   30 21 * * *      -> TSİ 00:30 gece kapanış              =  1 istek
+#   TOPLAM = 100. Boşluk YOK: elle "Run workflow" basmak, gün sonundaki çalışmalardan istek çalar.
+on:
+  schedule:
+    - cron: '15 10-12 * * *'
+    - cron: '*/5 13-20 * * *'
+    - cron: '30 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-scores
+  cancel-in-progress: false
+
+jobs:
+  scores:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Bugünün tüm maçlarını tek istekle çek
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: node scripts/fetch-scores.js
+
+      - name: Skor ya da durum değiştiyse kaydet
+        run: |
+          git add canli-skorlar.json
+          if git diff --cached --quiet; then
+            echo "Değişiklik yok, commit atılmadı."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Canlı skorlar güncellendi"
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push && exit 0
+            sleep 5
+          done
+          echo "::warning::push başarısız oldu, bir sonraki çalışmada denenecek"
+          exit 0
