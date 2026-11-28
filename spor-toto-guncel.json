@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "guncelleme": "2026-11-27T19:23:15.043Z",
+  "kaynak": "dosya",
+  "programHash": "eb485ec90159ac2b8ecb9dc4ba94d82e2f3d3de8a62e5a844467bda557bbd6cd",
+  "hash": "28145ab110a3303077870da486b9deb14a43962e5a4615efe4c660202b621661",
+  "bas": "2026-11-27",
+  "bit": "2026-11-30",
+  "maclar": [
+    {"no": 1, "ev": "Alanyaspor", "dep": "Konyaspor", "tarih": "2026-11-27", "saat": "20:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 44, "2": 25, "x": 31}},
+    {"no": 2, "ev": "Çaykur Rizespor A.Ş.", "dep": "Kasımpaşa A.Ş.", "tarih": "2026-11-27", "saat": "20:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 46, "2": 28, "x": 26}},
+    {"no": 3, "ev": "Samsunspor A.Ş.", "dep": "Gençlerbirliği", "tarih": "2026-11-28", "saat": "16:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 63, "2": 14, "x": 23}},
+    {"no": 4, "ev": "Gaziantep FK A.Ş.", "dep": "Amed Sportif Faaliyetler", "tarih": "2026-11-28", "saat": "19:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 24, "2": 51, "x": 25}},
+    {"no": 5, "ev": "Çorum FK", "dep": "Kocaelispor", "tarih": "2026-11-29", "saat": "13:30", "o1": null, "ox": null, "o2": null, "oyn": {"1": 45, "2": 28, "x": 27}},
+    {"no": 6, "ev": "Eyüpspor", "dep": "Başakşehir FK", "tarih": "2026-11-29", "saat": "16:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 3, "2": 90, "x": 8}},
+    {"no": 7, "ev": "Fenerbahçe A.Ş.", "dep": "Erzurumspor FK", "tarih": "2026-11-29", "saat": "19:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 97, "2": 1, "x": 2}},
+    {"no": 8, "ev": "Göztepe A.Ş.", "dep": "Trabzonspor A.Ş.", "tarih": "2026-11-30", "saat": "19:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 20, "2": 51, "x": 29}},
+    {"no": 9, "ev": "Beşiktaş A.Ş.", "dep": "Galatasaray A.Ş.", "tarih": "2026-11-30", "saat": "21:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 40, "2": 32, "x": 28}},
+    {"no": 10, "ev": "Freiburg", "dep": "Leipzig", "tarih": "2026-11-29", "saat": "17:30", "o1": null, "ox": null, "o2": null, "oyn": {"1": 34, "2": 43, "x": 23}},
+    {"no": 11, "ev": "B. Dortmund", "dep": "B. Leverkusen", "tarih": "2026-11-29", "saat": "21:30", "o1": null, "ox": null, "o2": null, "oyn": {"1": 65, "2": 14, "x": 22}},
+    {"no": 12, "ev": "Lyon", "dep": "Monaco", "tarih": "2026-11-29", "saat": "22:45", "o1": null, "ox": null, "o2": null, "oyn": {"1": 54, "2": 22, "x": 24}},
+    {"no": 13, "ev": "Everton", "dep": "Liverpool", "tarih": "2026-11-29", "saat": "15:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 14, "2": 60, "x": 26}},
+    {"no": 14, "ev": "Arsenal", "dep": "Manchester City", "tarih": "2026-11-29", "saat": "19:30", "o1": null, "ox": null, "o2": null, "oyn": {"1": 53, "2": 20, "x": 27}},
+    {"no": 15, "ev": "Real Sociedad", "dep": "Sevilla", "tarih": "2026-11-29", "saat": "23:00", "o1": null, "ox": null, "o2": null, "oyn": {"1": 58, "2": 16, "x": 26}}
+  ]
+}
