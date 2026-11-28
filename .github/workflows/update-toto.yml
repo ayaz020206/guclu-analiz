@@ -1,0 +1,43 @@
+name: update-toto
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # her 2 saatte bir
+  workflow_dispatch:         # elle çalıştırma
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-toto
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Spor Toto programını çek
+        env:
+          TOTO_SOURCE_URL: ${{ vars.TOTO_SOURCE_URL || secrets.TOTO_SOURCE_URL }}
+          TOTO_SOURCE_HEADERS: ${{ vars.TOTO_SOURCE_HEADERS }}
+        run: node scripts/fetch-toto.js
+
+      - name: Değişiklik varsa kaydet
+        run: |
+          git add spor-toto-guncel.json
+          if git diff --cached --quiet; then
+            echo "Değişiklik yok, commit atılmadı."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Spor Toto verisi otomatik güncellendi"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push
